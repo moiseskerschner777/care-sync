@@ -76,6 +76,8 @@ services:
     depends_on:
       iris:
         condition: service_healthy
+      mcp-database-server-iris:
+        condition: service_started
     environment:
       IRIS_HOST: iris
       IRIS_PORT: 1972
