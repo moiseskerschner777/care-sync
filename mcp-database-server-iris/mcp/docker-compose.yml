@@ -1,0 +1,33 @@
+services:
+  iris:
+    image: intersystems/iris-community:2025.1
+    ports:
+      - "1972:1972"
+      - "52773:52773"
+    environment:
+      - ISC_DATA_DIRECTORY=/data/IRIS.DAT
+    volumes:
+      - ./iris-data:/data
+    healthcheck:
+      test: ["CMD", "iris", "status", "IRIS"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    command:
+      - -a
+      - iris session iris -U%SYS '##class(Security.Users).UnExpireUserPasswords("*")'
+
+  mcp-client:
+    build:
+      context: ..
+      dockerfile: /Dockerfile
+    environment:
+      - IRIS_HOSTNAME=iris
+      - IRIS_PORT=1972
+      - IRIS_NAMESPACE=USER
+      - IRIS_USERNAME=_SYSTEM
+      - IRIS_PASSWORD=SYS
+    depends_on:
+      iris:
+        condition: service_healthy

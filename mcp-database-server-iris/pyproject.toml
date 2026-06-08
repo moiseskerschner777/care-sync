@@ -1,0 +1,22 @@
+[project]
+name = "mcp-server-iris"
+version = "0.3.1"
+description = "A Model Context Protocol server for InterSystems IRIS."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "CaretDev Corp." }]
+keywords = ["iris", "mcp", "llm", "automation"]
+license = { text = "MIT" }
+dependencies = [
+    "intersystems-irispython>=5.1.0",
+    "mcp>=1.2.0",
+    "starlette>=0.36.0",
+    "uvicorn>=0.27.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"

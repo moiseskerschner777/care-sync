@@ -123,6 +123,23 @@ services:
       iris:
         condition: service_healthy
 
+  mcp-database-server-iris:
+    build:
+      context: ./mcp-database-server-iris
+    ports:
+      - "8006:3001"
+    environment:
+      IRIS_HOSTNAME: iris
+      IRIS_PORT: 1972
+      IRIS_NAMESPACE: USER
+      IRIS_USERNAME: _SYSTEM
+      IRIS_PASSWORD: SYS
+    networks:
+      - care-sync-net
+    depends_on:
+      iris:
+        condition: service_healthy
+
 volumes:
   iris-data:
 
