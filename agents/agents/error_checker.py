@@ -60,10 +60,9 @@ def run_error_checker(state: Dict[str, Any]) -> Dict[str, Any]:
         patient_id = exam_code = service_request_id = None
 
     db_findings = _collect_db_findings(patient_id, exam_code, service_request_id)
-    print(db_findings)
     state["_db_findings"] = db_findings
 
-    prompt = _build_prompt(operation, system_target, payload_sent, http_code, error_body, code_chunks, doc_chunks)
+    prompt = _build_prompt(operation, system_target, payload_sent, http_code, error_body, code_chunks, doc_chunks, db_findings)
     result = _call_llm(prompt)
     diag = _parse_llm_response(result)
 
@@ -72,6 +71,8 @@ def run_error_checker(state: Dict[str, Any]) -> Dict[str, Any]:
         sources.append("codebase")
     if doc_chunks:
         sources.append("knowledge_base")
+    if db_findings and any(v is not None for v in db_findings.values()):
+        sources.append("iris_db")
     diag["sources_used"] = sources
 
     confidence = diag.get("confidence", 0)
@@ -115,9 +116,11 @@ def _collect_db_findings(patient_id, exam_code, service_request_id):
 
 def _build_prompt(operation: str, system_target: str, payload_sent: Dict[str, Any],
                   http_code: int, error_body: Dict[str, Any],
-                  code_chunks: list[str], doc_chunks: list[str]) -> str:
+                  code_chunks: list[str], doc_chunks: list[str],
+                  db_findings: Dict[str, Any]) -> str:
     code_text = "\n\n---\n\n".join(code_chunks) if code_chunks else "(no LabCore source code available)"
     doc_text = "\n\n---\n\n".join(doc_chunks) if doc_chunks else "(no integration documentation available)"
+    db_text = json.dumps(db_findings, indent=2) if db_findings else "(no database findings available)"
 
     return f"""You are a healthcare integration error analyst.
 
@@ -137,6 +140,13 @@ LABCORE SOURCE CODE (how the payload is built):
 INTEGRATION DOCUMENTATION (what the target system expects):
 {doc_text}
 
+=== DATABASE FINDINGS ===
+patient_exists: {db_findings.get("patient_exists")}
+exam_exists: {db_findings.get("exam_exists")}
+exam_can_perform: {db_findings.get("exam_can_perform")}
+service_request_status: {db_findings.get("service_request_status")}
+covenant_id: {db_findings.get("covenant_id")}
+
 TASK:
 Analyze the error using the following priority order:
 
@@ -151,16 +161,16 @@ Analyze the error using the following priority order:
 3. CODEBASE — use source code only to confirm or investigate, never to
    override a clear signal from steps 1 or 2. The codebase may be stale.
 
-4. DATABASE LIMITATION — you do not have access to LabCore's database.
-   This means you cannot verify whether a code, id, or value was registered
-   correctly in LabCore. When the error is about an unknown or unrecognized
-   value and the root cause could be:
-     - a typo at data entry in LabCore (ORIGIN_A)
-     - the external system not having that value in its catalog (ORIGIN_B)
-     - a wrong mapping between systems (CONTRATO)
-   ...and you cannot distinguish between them without database access,
-   set confidence below 0.70 and origin to AMBIGUOUS.
-   In suggestion, explicitly state: "check LabCore catalog for this value".
+4. DATABASE FINDINGS — use the live LabCore database findings above to
+   resolve questions that previously required AMBIGUOUS classification.
+   - patient_exists = False → ORIGIN_A (non-existent patient sent)
+   - exam_exists = False → ORIGIN_A (non-existent exam code sent)
+   - exam_can_perform = True → exam should not have been routed externally (ORIGIN_A)
+   - exam_can_perform = False → routing was correct (ORIGIN_B if RefLab rejected)
+   - service_request_status = CANCELLED → ORIGIN_A (cancelled order sent)
+   - covenant_id = None + VitaCare auth error → ORIGIN_A (null covenant sent)
+   If a finding is None, the database check failed — do not treat None
+   as a signal, but note it in evidence.
 
 Return ONLY valid JSON with no markdown, no backticks, no preamble:
 {{

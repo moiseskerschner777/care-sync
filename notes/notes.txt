@@ -1,36 +1,9 @@
+for me just, thinking better, remove the llms keys via front end
 
-2. Error list — what is an "error record" exactly?
+2. "Fix" confirmation — what does the Agent endpoint receive?
+    error_report.id
 
-    SQLUser.agent_error_report:
-        id
-        created_at
-        system_target
-        operation
-        origin
-        confidence
-        evidence
-        suggestion
-        payload_sent
-        raw_error
-        audit_event_id
-        payload_hash
-        raw_error_hash
+    i believe it can find the payload no?
 
 
-    you just connect to the agent backend
-
-
-Is that the right mental model? Or is "confirm" more like "retry the original request" using the corrected payload the agent already built?
-yes
-
-
-The keys are saved to IRIS via a new Agent route. A few sub-questions:
-
-    Should the Agent reload its LLM config live (update LiteLLM settings at runtime) after saving, or just persist the values for next boot?
-        I didnt want to capture these keys, so, maybe just cache it
-
-    Is there one global config record, or per-user (no auth system exists, so probably global)?
-        just global
-
-    Should the modal re-appear on next visit if keys are already saved, or skip straight to the list?
-        yes always
+ Error list — columns visible in the list row (collapsed state)
