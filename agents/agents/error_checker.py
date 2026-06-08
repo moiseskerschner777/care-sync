@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import time
@@ -8,6 +9,13 @@ from litellm import completion
 from config import settings
 from database import SessionLocal
 from tools.codebase import search_labcore_code
+from tools.iris_db import (
+    check_exam_exists,
+    check_patient_exists,
+    get_covenant_id,
+    get_exam_can_perform,
+    get_service_request_status,
+)
 from tools.knowledge_base import search_knowledge_base
 
 logger = logging.getLogger(__name__)
@@ -44,6 +52,17 @@ def run_error_checker(state: Dict[str, Any]) -> Dict[str, Any]:
     state["_debug_code_chunks"] = code_chunks
     state["_debug_doc_chunks"] = doc_chunks
 
+    if isinstance(payload_sent, dict):
+        patient_id = payload_sent.get("patient_id")
+        exam_code = payload_sent.get("exam_code")
+        service_request_id = payload_sent.get("service_request_id")
+    else:
+        patient_id = exam_code = service_request_id = None
+
+    db_findings = _collect_db_findings(patient_id, exam_code, service_request_id)
+    print(db_findings)
+    state["_db_findings"] = db_findings
+
     prompt = _build_prompt(operation, system_target, payload_sent, http_code, error_body, code_chunks, doc_chunks)
     result = _call_llm(prompt)
     diag = _parse_llm_response(result)
@@ -62,6 +81,36 @@ def run_error_checker(state: Dict[str, Any]) -> Dict[str, Any]:
     state["error_diagnosis"] = diag
 
     return state
+
+
+def _collect_db_findings(patient_id, exam_code, service_request_id):
+    async def _gather():
+        return await asyncio.gather(
+            check_patient_exists(patient_id),
+            check_exam_exists(exam_code),
+            get_exam_can_perform(exam_code),
+            get_service_request_status(service_request_id),
+            get_covenant_id(service_request_id),
+            return_exceptions=True,
+        )
+
+    try:
+        results = asyncio.run(_gather())
+        return {
+            "patient_exists": None if isinstance(results[0], BaseException) else results[0],
+            "exam_exists": None if isinstance(results[1], BaseException) else results[1],
+            "exam_can_perform": None if isinstance(results[2], BaseException) else results[2],
+            "service_request_status": None if isinstance(results[3], BaseException) else results[3],
+            "covenant_id": None if isinstance(results[4], BaseException) else results[4],
+        }
+    except Exception:
+        return {
+            "patient_exists": None,
+            "exam_exists": None,
+            "exam_can_perform": None,
+            "service_request_status": None,
+            "covenant_id": None,
+        }
 
 
 def _build_prompt(operation: str, system_target: str, payload_sent: Dict[str, Any],

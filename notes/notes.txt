@@ -1,33 +1,36 @@
-1. What triggers the Reporter Agent?
-Does it always run after Risk Classifier (regardless of risk level), or only on specific outcomes — e.g., only when something fails, or only when action is taken?
-    always
 
-2. What is the output target?
-You mentioned saving to an error_report IRIS table plus a vector embedding.
-Is that still the plan, or do you want a file output too (e.g., a .md report saved to disk or accessible via an endpoint)?
+2. Error list — what is an "error record" exactly?
 
-agent_error_report:
-    id
-    created_at
-    system_target
-    operation
-    origin
-    confidence
-    evidence
-    suggestion
-    payload_sent
-    raw_error
-    audit_event_id
-    payload_hash
-    raw_error_hash
-
-maybe you dont need to create a table for that, I already have this one,
-maybe this this agent is not really a thing I guess
+    SQLUser.agent_error_report:
+        id
+        created_at
+        system_target
+        operation
+        origin
+        confidence
+        evidence
+        suggestion
+        payload_sent
+        raw_error
+        audit_event_id
+        payload_hash
+        raw_error_hash
 
 
-3. Who consumes this report?
-Is it purely for audit/future similarity search, or will there be a human-facing endpoint — e.g., GET /agent/reports/{id} to retrieve past reports?
+    you just connect to the agent backend
 
 
-4. What action does the Reporter take after saving?
-Does it just return the report to the Parent Agent and done, or does it also trigger something — like a webhook, a notification, or an automatic retry?
+Is that the right mental model? Or is "confirm" more like "retry the original request" using the corrected payload the agent already built?
+yes
+
+
+The keys are saved to IRIS via a new Agent route. A few sub-questions:
+
+    Should the Agent reload its LLM config live (update LiteLLM settings at runtime) after saving, or just persist the values for next boot?
+        I didnt want to capture these keys, so, maybe just cache it
+
+    Is there one global config record, or per-user (no auth system exists, so probably global)?
+        just global
+
+    Should the modal re-appear on next visit if keys are already saved, or skip straight to the list?
+        yes always
