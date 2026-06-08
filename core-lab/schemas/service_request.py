@@ -41,4 +41,5 @@ class ServiceRequestCreate(BaseModel):
     practitioner_id: str
     priority: str = "ROUTINE"
     notes: Optional[str] = None
+    covenant_id: Optional[str] = None
     items: list[ServiceRequestItemCreate]

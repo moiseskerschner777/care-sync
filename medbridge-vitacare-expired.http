@@ -1,0 +1,24 @@
+### Variables
+@baseUrl = http://localhost:8000
+@patientId = 11c5be47-3215-4890-a79f-9c2b2293a85e
+@practitionerId = 0f7f838f-5bbd-43b7-951c-02582e4272a3
+
+### POST service request with expired covenant — triggers VitaCare via agent
+### Expected flow:
+###   LabCore 201 → agent routes to VitaCare → VitaCare 403 ERR-EXPIRED
+###   → Error Checker diagnoses CONTRACT → Agent reports authorization expired
+POST {{baseUrl}}/service-requests
+Content-Type: application/json
+
+{
+  "patient_id": "{{patientId}}",
+  "practitioner_id": "{{practitionerId}}",
+  "priority": "ROUTINE",
+  "covenant_id": "ERR-EXPIRED",
+  "items": [
+    {
+      "exam_code": "HEM001",
+      "exam_name": "Hemograma"
+    }
+  ]
+}

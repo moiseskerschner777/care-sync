@@ -71,7 +71,7 @@ def create_service_request(body: ServiceRequestCreate, db: Session = Depends(get
         "code": sr.code,
         "patient_id": sr.patient_id,
         "practitioner_id": sr.practitioner_id,
-        "covenant_id": getattr(sr, "covenant_id", None),
+        "covenant_id": body.covenant_id,
         "cid_code": getattr(sr, "cid_code", None),
     }
     items_data = [
