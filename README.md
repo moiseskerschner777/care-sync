@@ -241,55 +241,33 @@ curl http://localhost:8003/health   # Agent
 
 All should return `200 OK`.
 
-### 4. Send a test request
+### 4. Run the test suite
 
-Create an exam order from LabCore — this triggers the full agent flow:
+All four tests are available in `core-lab/tests/agent-e2e0.http` (IntelliJ HTTP Client or VS Code REST Client).
 
-```bash
-curl -s -X POST http://localhost:8000/service-requests \
-  -H "Content-Type: application/json" \
-  -d '{
-    "patient_id": "11c5be47-3215-4890-a79f-9c2b2293a85e",
-    "practitioner_id": "0f7f838f-5bbd-43b7-951c-02582e4272a3",
-    "priority": "ROUTINE",
-    "items": [{ "exam_code": "HEM001" }]
-  }'
-```
+#### Test 1 — cache miss, Doc Reader builds FHIR Bundle (RefLab)
 
-Watch the agent logs:
+First request with `ONC001` (non-performable exam). The agent has no cached schema — it indexes the RefLab integration docs, invokes the LLM to build a FHIR R4 Bundle, sends it, and caches the result on success.
 
-```bash
-docker compose logs -f agent
-```
+#### Test 2 — cache hit, no LLM invocation (RefLab)
 
-First call: the Doc Reader Agent runs, LLM builds the payload from integration docs, result is cached.
-Second identical call: cache hit, ~55ms, zero LLM calls.
+Same operation with different patient/practitioner values and `GEN001`. The agent finds the cached schema from Test 1, replays it directly — no LLM, ~55ms.
 
-### 5. Trigger an error scenario
+#### Test 3 — codebase error, Error Checker diagnoses ORIGIN_A (RefLab)
 
-Send an order with a known error trigger to see the Error Checker Agent in action:
+`ERR-LOINC` is not a valid LOINC code. RefLab rejects with 404 "LOINC code unknown". The Error Checker searches the LabCore source code, integration docs, and IRIS database, then diagnoses the root cause as **ORIGIN_A** (LabCore data/mapping issue).
+
+#### Test 4 — VitaCare covenant expired (VitaCare)
+
+Uses a performable exam (`HEM001`) so only VitaCare is routed. The `covenant_id: "ERR-EXPIRED"` payload triggers VitaCare's `ERR-EXPIRED` simulator — returns 403 "Covenant plan is not active". The Error Checker diagnoses the contract violation.
+
+Watch the agent logs after each request:
 
 ```bash
-curl -s -X POST http://localhost:8000/service-requests \
-  -H "Content-Type: application/json" \
-  -d '{
-    "patient_id": "664d2678-29ce-450e-ab50-bd463364ded6",
-    "practitioner_id": "35ca797f-5099-479d-91d5-fbe12a125b90",
-    "priority": "ROUTINE",
-    "items": [{ "exam_code": "ERR-LOINC" }]
-  }'
+docker compose logs -f agents
 ```
 
-The agent will receive a 404 from RefLab, run the Error Checker, write an `AuditEvent` to IRIS FHIR R4, and save a structured diagnosis row to `agent_error_report`.
-
-Query the result:
-
-```bash
-curl -s -u _SYSTEM:SYS http://localhost:52773/fhir/r4/AuditEvent \
-  | python3 -m json.tool
-```
-
-### 6. IRIS Management Portal
+### 5. IRIS Management Portal
 
 Available at `http://localhost:52773/csp/sys/UtilHome.csp`
 Credentials: `_SYSTEM` / `SYS`
@@ -299,18 +277,24 @@ Namespace: `USER`
 
 ## Error Scenarios
 
-62 test scenarios are available in `medbridge.http`, covering 8 error categories:
+The agent diagnoses four error origins:
 
-| Category | Type | Trigger field | Count |
-|----------|------|---------------|-------|
-| 1 | Identity errors | `patient_id` | 8 |
-| 2 | Exam/clinical errors | `exam_code` | 9 |
-| 3 | Sample errors | `sample_type` | 6 |
-| 4 | Authorization errors | `covenant_id` (VitaCare) | 15 |
-| 5 | Timing/workflow errors | `order_id` | 7 |
-| 6 | Format/encoding errors | field-level | 6 |
-| 7 | Partial success | `batch_id` | 5 |
-| 8 | Cancellation errors | `cancel_id` | 4 |
+| Origin | Meaning |
+|--------|---------|
+| ORIGIN_A | Bug or mapping issue in LabCore code, or wrong data registered in LabCore |
+| ORIGIN_B | Problem on the external system side — it rejected a value that should be valid |
+| CONTRACT | Business rule or contract violation between systems |
+| INFRA | Timeout, network failure, system down |
+
+Three systems are wired for error simulation:
+
+| System | File | Triggers |
+|--------|------|----------|
+| **RefLab** | `ref-lab/simulators/catalog.py` | Invalid exam codes (`ERR-LOINC`, `ERR-SAMPLE`, etc.), missing patient/search, cancelled orders |
+| **VitaCare** | `vita-care/simulators/covenant.py` | 16 `covenant_id` trigger strings (`ERR-EXPIRED`, `ERR-NOT-COVERED`, `ERR-CID`, etc.) |
+| **LabCore** | `core-lab/routes/service_requests.py` | Code-level errors detectable by the Error Checker via python-code-rag MCP |
+
+Test requests are in `core-lab/tests/agent-e2e0.http`.
 
 ---
 
