@@ -86,10 +86,10 @@ services:
       IRIS_PASSWORD: SYS
       DEBUG_HOST: host.docker.internal
       DEBUG_PORT: 5678
-      LLM_PROVIDER: deepseek/deepseek-chat
+      LLM_PROVIDER: ${LLM_PROVIDER}
       LLM_API_KEY: ${LLM_API_KEY}
-      EMBEDDING_PROVIDER: ollama/nomic-embed-text
-      EMBEDDING_API_BASE: http://host.docker.internal:11434
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER}
+      EMBEDDING_API_BASE: ${EMBEDDING_API_BASE}
       FHIR_BASE_URL: http://iris:52773/fhir/r4
     restart: on-failure
     ports:
