@@ -1,0 +1,5 @@
+### Health check — expect 200 ok
+GET http://localhost:8002/health
+
+### Swagger docs — expect 200 (HTML page with "VitaCare API")
+GET http://localhost:8002/docs

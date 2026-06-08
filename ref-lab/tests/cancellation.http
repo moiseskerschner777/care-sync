@@ -1,0 +1,38 @@
+### Variables
+@baseUrl = http://localhost:8001
+
+### ============================================================
+### CATEGORY 8 — Cancellation Errors (cancel_id)
+### ============================================================
+
+### Successful cancellation (expect 200)
+DELETE {{baseUrl}}/fhir/r4/ServiceRequest/ORDER-123
+
+### ERR-NOT-PROPAGATED → 200 with propagated=false
+DELETE {{baseUrl}}/fhir/r4/ServiceRequest/ERR-NOT-PROPAGATED
+
+### ERR-PROCESSING → 409 OperationOutcome
+DELETE {{baseUrl}}/fhir/r4/ServiceRequest/ERR-PROCESSING
+
+### ERR-RESULT-ISSUED → 422 OperationOutcome
+DELETE {{baseUrl}}/fhir/r4/ServiceRequest/ERR-RESULT-ISSUED
+
+### ERR-PARTIAL-CANCEL → 207 partial cancel
+DELETE {{baseUrl}}/fhir/r4/ServiceRequest/ERR-PARTIAL-CANCEL
+
+### ============================================================
+### End-to-end scenario — contest demo priority #4
+### ============================================================
+
+### Step 1: POST clean ServiceRequest (expect 201)
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "HEM-001" }] }
+}
+
+### Step 2: DELETE the order (expect 409 — already processing)
+DELETE {{baseUrl}}/fhir/r4/ServiceRequest/ERR-PROCESSING

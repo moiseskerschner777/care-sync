@@ -1,0 +1,483 @@
+### Variables
+@baseUrl = http://localhost:8001
+
+### ============================================================
+### CLEAN PAYLOAD (success)
+### ============================================================
+
+### POST clean payload (expect 201 DiagnosticReport)
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "id": "ORDER-001",
+  "subject": {
+    "reference": "Patient/PAC-001"
+  },
+  "code": {
+    "coding": [{
+      "system": "http://loinc.org",
+      "code": "HEM-001",
+      "display": "Hemograma"
+    }]
+  }
+}
+
+### ============================================================
+### CATEGORY 1 — Identity Errors (patient_id)
+### ============================================================
+
+### ERR-ACCENT → 422
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/ERR-ACCENT" },
+  "code": { "coding": [{ "code": "HEM-001" }] }
+}
+
+### ERR-DOC-TYPE → 422
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/ERR-DOC-TYPE" },
+  "code": { "coding": [{ "code": "HEM-001" }] }
+}
+
+### ERR-DOB-FORMAT → 422
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/ERR-DOB-FORMAT" },
+  "code": { "coding": [{ "code": "HEM-001" }] }
+}
+
+### ERR-DUPLICATE → 409
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/ERR-DUPLICATE" },
+  "code": { "coding": [{ "code": "HEM-001" }] }
+}
+
+### ERR-GENDER → 422
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/ERR-GENDER" },
+  "code": { "coding": [{ "code": "HEM-001" }] }
+}
+
+### ERR-MINOR → 422
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/ERR-MINOR" },
+  "code": { "coding": [{ "code": "HEM-001" }] }
+}
+
+### ERR-CPF → 422
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/ERR-CPF" },
+  "code": { "coding": [{ "code": "HEM-001" }] }
+}
+
+### ERR-ENCODING → 422
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/ERR-ENCODING" },
+  "code": { "coding": [{ "code": "HEM-001" }] }
+}
+
+### ============================================================
+### CATEGORY 2 — Exam Errors (exam_code)
+### ============================================================
+
+### ERR-LOINC → 404
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "ERR-LOINC" }] }
+}
+
+### ERR-FASTING → 422
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "ERR-FASTING" }] }
+}
+
+### ERR-CLINICAL-INFO → 422
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "ERR-CLINICAL-INFO" }] }
+}
+
+### ERR-INCOMPATIBLE → 422
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "ERR-INCOMPATIBLE" }] }
+}
+
+### ERR-DISCONTINUED → 410
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "ERR-DISCONTINUED" }] }
+}
+
+### ERR-METHODOLOGY → 422
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "ERR-METHODOLOGY" }] }
+}
+
+### ERR-CRITICAL-FLAG → 422
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "ERR-CRITICAL-FLAG" }] }
+}
+
+### ERR-FORMAT → 422
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "ERR-FORMAT" }] }
+}
+
+### ERR-CBHPM → 422
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "ERR-CBHPM" }] }
+}
+
+### ============================================================
+### CATEGORY 3 — Sample Errors (sample_type)
+### ============================================================
+
+### ERR-TUBE → 422
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "HEM-001" }] },
+  "specimen": [{ "reference": "Specimen/ERR-TUBE" }]
+}
+
+### ERR-VOLUME → 422
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "HEM-001" }] },
+  "specimen": [{ "reference": "Specimen/ERR-VOLUME" }]
+}
+
+### ERR-HEMOLYZED → 422
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "HEM-001" }] },
+  "specimen": [{ "reference": "Specimen/ERR-HEMOLYZED" }]
+}
+
+### ERR-EXPIRED → 422
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "HEM-001" }] },
+  "specimen": [{ "reference": "Specimen/ERR-EXPIRED" }]
+}
+
+### ERR-CUSTODY → 422
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "HEM-001" }] },
+  "specimen": [{ "reference": "Specimen/ERR-CUSTODY" }]
+}
+
+### ERR-TEMPERATURE → 422
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "HEM-001" }] },
+  "specimen": [{ "reference": "Specimen/ERR-TEMPERATURE" }]
+}
+
+### ============================================================
+### CATEGORY 5 — Timing Errors (order_id)
+### ============================================================
+
+### ERR-RESULT-BEFORE-AUTH → 422
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "id": "ERR-RESULT-BEFORE-AUTH",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "HEM-001" }] }
+}
+
+### ERR-CANCEL-RACE → 409
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "id": "ERR-CANCEL-RACE",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "HEM-001" }] }
+}
+
+### ERR-DUPLICATE-RESULT (first call returns 201, second 409)
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "id": "ERR-DUPLICATE-RESULT",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "HEM-001" }] }
+}
+
+### ERR-AMENDED → 200 with amended flag
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "id": "ERR-AMENDED",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "HEM-001" }] }
+}
+
+### ERR-DUPLICATE-ORDER (first call returns 201, second 409)
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "id": "ERR-DUPLICATE-ORDER",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "HEM-001" }] }
+}
+
+### ERR-CUTOFF → 422
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "id": "ERR-CUTOFF",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "HEM-001" }] }
+}
+
+### ERR-TIMEOUT → 408 (30s delay)
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "id": "ERR-TIMEOUT",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "HEM-001" }] }
+}
+
+### ============================================================
+### CATEGORY 6 — Format Errors (field-level)
+### ============================================================
+
+### ERR-DECIMAL → 422
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "HEM-001" }] },
+  "extension": [{ "url": "result_value", "valueString": "ERR-DECIMAL" }]
+}
+
+### ERR-TIMEZONE → 422
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "HEM-001" }] },
+  "extension": [{ "url": "result_value", "valueString": "ERR-TIMEZONE" }]
+}
+
+### ERR-NULL → 422
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "HEM-001" }] },
+  "extension": [{ "url": "result_value", "valueString": "ERR-NULL" }]
+}
+
+### ERR-BOOL → 422
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "HEM-001" }] },
+  "extension": [{ "url": "result_value", "valueString": "ERR-BOOL" }]
+}
+
+### ERR-OVERFLOW → 422
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "HEM-001" }] },
+  "extension": [{ "url": "result_value", "valueString": "ERR-OVERFLOW" }]
+}
+
+### ERR-TRUNCATED → 422
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "HEM-001" }] },
+  "extension": [{ "url": "result_value", "valueString": "ERR-TRUNCATED" }]
+}
+
+### ============================================================
+### CATEGORY 7 — Partial Success (batch_id extension)
+### ============================================================
+
+### ERR-PARTIAL → 207
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "HEM-001" }] },
+  "extension": [{ "url": "batch_id", "valueString": "ERR-PARTIAL" }]
+}
+
+### ERR-WARNING → 200 with warnings
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "HEM-001" }] },
+  "extension": [{ "url": "batch_id", "valueString": "ERR-WARNING" }]
+}
+
+### ERR-BODY-MISMATCH → 200 with error body
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "HEM-001" }] },
+  "extension": [{ "url": "batch_id", "valueString": "ERR-BODY-MISMATCH" }]
+}
+
+### ERR-EMPTY → 200 empty body
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "HEM-001" }] },
+  "extension": [{ "url": "batch_id", "valueString": "ERR-EMPTY" }]
+}
+
+### ERR-PARTIAL-CANCEL → 207
+POST {{baseUrl}}/fhir/r4/ServiceRequest
+Content-Type: application/json
+
+{
+  "resourceType": "ServiceRequest",
+  "subject": { "reference": "Patient/PAC-001" },
+  "code": { "coding": [{ "code": "HEM-001" }] },
+  "extension": [{ "url": "batch_id", "valueString": "ERR-PARTIAL-CANCEL" }]
+}

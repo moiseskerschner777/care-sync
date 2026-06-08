@@ -1,0 +1,43 @@
+
+POST http://localhost:8000/service-requests
+Content-Type: application/json
+
+{
+  "patient_id": "11c5be47-3215-4890-a79f-9c2b2293a85e",
+  "practitioner_id": "0f7f838f-5bbd-43b7-951c-02582e4272a3",
+  "priority": "ROUTINE",
+  "notes": "Test 1 — cache miss, doc_reader builds FHIR Bundle",
+  "items": [
+    { "exam_code": "ONC001", "exam_name": "Marcadores Tumorais" }
+  ]
+}
+
+### ============================================================================
+
+POST http://localhost:8000/service-requests
+Content-Type: application/json
+
+{
+  "patient_id": "e36e8749-a762-45ea-bd6b-63a5745d6e07",
+  "practitioner_id": "8853e3c3-d0f9-469f-ae48-7813dc83b8ec",
+  "priority": "URGENT",
+  "notes": "Test 2 — cache hit, no doc_reader",
+  "items": [
+    { "exam_code": "GEN001", "exam_name": "Teste Genetico" }
+  ]
+}
+
+### ============================================================================
+
+POST http://localhost:8000/service-requests
+Content-Type: application/json
+
+{
+  "patient_id": "664d2678-29ce-450e-ab50-bd463364ded6",
+  "practitioner_id": "35ca797f-5099-479d-91d5-fbe12a125b90",
+  "priority": "ROUTINE",
+  "notes": "Test 3 — codebase error, LOINC desconhecido no RefLab",
+  "items": [
+    { "exam_code": "ERR-LOINC", "exam_name": "Teste LOINC desconhecido (simulador)" }
+  ]
+}

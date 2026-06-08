@@ -330,5 +330,3 @@ All tables live in the `USER` namespace, `SQLUser` schema.
 | `SQLUser.agent_error_report` | Agent | Structured error diagnoses |
 
 ---
-
-# care-sync

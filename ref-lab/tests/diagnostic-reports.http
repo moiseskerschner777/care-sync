@@ -1,0 +1,8 @@
+### Variables
+@baseUrl = http://localhost:8001
+
+### GET DiagnosticReport by ID (any ID returns synthetic report)
+GET {{baseUrl}}/fhir/r4/DiagnosticReport/REPORT-001
+
+### GET another DiagnosticReport
+GET {{baseUrl}}/fhir/r4/DiagnosticReport/REPORT-002

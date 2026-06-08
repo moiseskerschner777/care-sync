@@ -1,0 +1,94 @@
+### GET service request — ACTIVE (OS-00001)
+GET http://localhost:8000/service-requests/51f63f5b-3db9-40c9-9344-b86cb7dc30fd
+
+### GET service request — ACTIVE URGENT (OS-00002, oncology)
+GET http://localhost:8000/service-requests/cd974d08-25b3-4dad-b7d6-9b5fd0d1c775
+
+### GET service request — COMPLETED (OS-00004)
+GET http://localhost:8000/service-requests/8b0282bf-12c0-4a91-ad86-966dfe59d660
+
+### GET service request — CANCELLED (OS-00005)
+GET http://localhost:8000/service-requests/6f9036b2-7130-47a5-9574-2bf5ce213fc7
+
+### GET service request — not found
+GET http://localhost:8000/service-requests/00000000-0000-0000-0000-000000000000
+
+### POST create service request — exams LabCore can perform (no routing)
+POST http://localhost:8000/service-requests
+Content-Type: application/json
+
+{
+  "patient_id": "11c5be47-3215-4890-a79f-9c2b2293a85e",
+  "practitioner_id": "0f7f838f-5bbd-43b7-951c-02582e4272a3",
+  "priority": "ROUTINE",
+  "notes": "Check-up anual",
+  "items": [
+    { "exam_code": "HEM001", "exam_name": "Hemograma" },
+    { "exam_code": "GLI001", "exam_name": "Glicemia" }
+  ]
+}
+
+### POST create service request — exam routes to RefLab (ONC001 can_perform=False)
+POST http://localhost:8000/service-requests
+Content-Type: application/json
+
+{
+  "patient_id": "e36e8749-a762-45ea-bd6b-63a5745d6e07",
+  "practitioner_id": "8853e3c3-d0f9-469f-ae48-7813dc83b8ec",
+  "priority": "URGENT",
+  "notes": "Investigacao oncologica",
+  "items": [
+    { "exam_code": "ONC001", "exam_name": "Marcadores Tumorais" }
+  ]
+}
+
+### POST create service request — exam routes to RefLab (GEN001 can_perform=False)
+POST http://localhost:8000/service-requests
+Content-Type: application/json
+
+{
+  "patient_id": "664d2678-29ce-450e-ab50-bd463364ded6",
+  "practitioner_id": "35ca797f-5099-479d-91d5-fbe12a125b90",
+  "priority": "ROUTINE",
+  "notes": "Painel genetico",
+  "items": [
+    { "exam_code": "GEN001", "exam_name": "Teste Genetico" }
+  ]
+}
+
+### POST create service request — exam routes to RefLab (CUL001 can_perform=False)
+POST http://localhost:8000/service-requests
+Content-Type: application/json
+
+{
+  "patient_id": "57b22f32-fb64-4328-8aea-331c799e8c5b",
+  "practitioner_id": "8853e3c3-d0f9-469f-ae48-7813dc83b8ec",
+  "priority": "STAT",
+  "notes": "Cultura urgente",
+  "items": [
+    { "exam_code": "CUL001", "exam_name": "Cultura e Antibiograma" }
+  ]
+}
+
+### POST create service request — patient not found
+POST http://localhost:8000/service-requests
+Content-Type: application/json
+
+{
+  "patient_id": "00000000-0000-0000-0000-000000000000",
+  "practitioner_id": "0f7f838f-5bbd-43b7-951c-02582e4272a3",
+  "priority": "ROUTINE",
+  "notes": "Should 404",
+  "items": [
+    { "exam_code": "HEM001", "exam_name": "Hemograma" }
+  ]
+}
+
+### PUT cancel service request — OS-00001
+PUT http://localhost:8000/service-requests/51f63f5b-3db9-40c9-9344-b86cb7dc30fd/cancel
+
+### PUT cancel service request — already cancelled (OS-00005) → 422
+PUT http://localhost:8000/service-requests/6f9036b2-7130-47a5-9574-2bf5ce213fc7/cancel
+
+### PUT cancel service request — not found → 404
+PUT http://localhost:8000/service-requests/00000000-0000-0000-0000-000000000000/cancel

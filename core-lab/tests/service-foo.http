@@ -1,0 +1,9 @@
+### ONC001 — routes to RefLab (can_perform = False)
+POST http://localhost:8000/service-requests
+Content-Type: application/json
+
+{
+  "patient_id": "11c5be47-3215-4890-a79f-9c2b2293a85e",
+  "practitioner_id": "0f7f838f-5bbd-43b7-951c-02582e4272a3",
+  "items": [{"exam_code": "ONC001"}]
+}

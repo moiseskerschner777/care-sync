@@ -1,0 +1,217 @@
+MedBridge — where the project stands today
+
+
+what we are building:
+
+    an intelligent interoperability platform for the laboratory sector.
+    the core idea is a layer that sits between systems and orchestrates communication between them — autonomously, with context, and with risk awareness.
+
+    it is not just an integration. it reasons. it diagnoses. it decides.
+
+
+the three systems:
+
+    LabCore — System A:
+
+        the main LIS. the source of truth.
+        has its own database, its own schema, its own REST API.
+        not a FHIR server. speaks its own proprietary format.
+        the AI agent reads context from here before making any decision.
+
+    RefLab — System B:
+
+        an external reference laboratory that receives support exams.
+        speaks FHIR R4 natively.
+        the agent translates LabCore data into FHIR to communicate with it.
+
+    VitaCare — System C:
+
+        an external insurance/covenant system.
+        speaks its own proprietary API — not FHIR.
+        handles coverage validation and pre-authorization.
+
+
+what has been defined so far:
+
+    LabCore is fully spec'd and ready to build:
+
+        5 SQLAlchemy models mapped to IRIS:
+            Patient
+            Practitioner
+            ServiceRequest
+            ServiceRequestItem
+            ExamCatalog
+
+        7 REST endpoints:
+            GET  /health
+            GET  /patients/{id}
+            GET  /practitioners/{id}
+            GET  /service-requests/{id}
+            POST /service-requests
+            PUT  /service-requests/{id}/cancel
+            GET  /exam-catalog
+            GET  /exam-catalog/{exam_code}
+
+        key field in ExamCatalog:
+            can_perform = False signals the agent to route to RefLab
+            this is the routing trigger — LabCore itself does not validate it
+
+        seed data covers all agent test scenarios:
+            10 patients
+            3 practitioners
+            5 performable exams + 3 non-performable (reflab)
+            5 service requests in different states
+            at least one with mixed exam types
+
+    the spec structure is complete:
+
+        .ai/steering/:
+            product.md    — what LabCore is, constraints, out of scope
+            structure.md  — layer boundaries, naming rules, dependency direction
+            tech.md       — stack, commands, ports, DBeaver connection details
+            agent.md      — behavioral rules, HARD STOP format
+
+        .ai/specs/:
+            spec.md       — what and why
+            design.md     — full data model, endpoints, key behaviors, agent flow
+            mock_error_scenarios.md — 50+ error scenarios mapped to trigger values
+
+        .ai/specs/tasks/:
+            1.md  — Infrastructure: docker-compose + health endpoint
+            2.md  — Models: all 5 SQLAlchemy models + table creation on startup
+            3.md  — Seed data: idempotent, covers all scenarios
+            4.md  — Patients + Practitioners endpoints
+            5.md  — ServiceRequest endpoints (GET, POST, cancel)
+            6.md  — ExamCatalog endpoints with can_perform filter
+            7.md  — Bug fixes (empty, reserved)
+
+
+the agent flow — cache-first design:
+
+    the key principle: LLM is only invoked when needed.
+
+    when a request arrives:
+
+        check MappingCache first:
+
+            hit  → use saved payload schema directly. no LLM. no cost.
+                    if this cached call fails → invalidate cache → agent wakes up.
+
+            miss → agent is invoked:
+                    reads KnowledgeBase docs (swagger, PDF, URL)
+                    builds payload with LLM
+                    sends request
+
+                    SUCCESS → save to MappingCache → future calls bypass LLM entirely
+                    ERROR   → diagnose → classify risk → save ErrorReport
+
+    risk classification determines action:
+
+        LOW      → auto-fix and retry
+        MEDIUM   → fix + notify human
+        CRITICAL → hard block + escalate. agent never auto-fixes this. a life could be lost.
+
+    two permanent tables in IRIS for the agent:
+
+        MappingCache:
+            stores what worked. operation + system + payload schema + embedding.
+            use_count and last_used_at track staleness.
+
+        ErrorReport:
+            stores what failed. always. regardless of outcome.
+            full Markdown report: error raw, payload sent, LabCore context, diagnosis, decision.
+            embedded as vector so future errors find similar past cases.
+
+
+the vector store:
+
+    lives natively inside IRIS — no separate database needed.
+    two uses:
+
+        KnowledgeBase:
+            documentation for System A indexed once.
+            swagger files, PDFs, example requests.
+            agent queries: "how does this endpoint work?"
+
+        ErrorReport history:
+            grows with every failure.
+            agent queries: "have I seen something like this before?"
+            the more errors happen, the smarter the diagnosis gets.
+
+
+the mock servers:
+
+    RefLab and VitaCare are FastAPI mocks — no real database.
+    they simulate realistic errors via trigger values in the request:
+
+        patient_id: ERR-ACCENT    → 422 name mismatch (accent stripped)
+        exam_code:  ERR-FORMAT    → 422 wrong code format (HEM001 vs HEM-001)
+        covenant_id: ERR-EXPIRED  → 403 plan not active
+        cancel_id: ERR-PROCESSING → 409 sample already in analyzer
+        order_id:  ERR-TIMEOUT    → 408 slow response (30s sleep)
+
+        and 45+ other scenarios covering:
+            identity mismatches
+            clinical data errors
+            sample collection errors
+            authorization and covenant errors
+            timing and workflow errors
+            data format and encoding errors
+            partial success edge cases
+            cancellation-specific failures
+
+    priority scenarios for the contest demo:
+        1. exam code format mismatch   → LOW      → agent auto-fixes
+        2. covenant expired            → MEDIUM   → agent escalates
+        3. duplicate order via history → LOW      → vector search memory
+        4. cancel already processing   → CRITICAL → hard block + AuditEvent
+        5. exam not covered            → MEDIUM   → agent tries alternative
+        6. patient accent mismatch     → CRITICAL → identity risk escalation
+
+
+the technology stack:
+
+    LabCore:
+        Python 3.11 + FastAPI 0.115.0
+        SQLAlchemy 2.0.36 + sqlalchemy-iris 0.11.2
+        Pydantic v2 (2.9.2) + pydantic-settings 2.5.2
+        Uvicorn 0.30.6
+
+    database:
+        IRIS for Health Community Edition (latest-em)
+        namespace: USER
+        port 1972 — SQLAlchemy
+        port 52773 — Management Portal
+
+    agent (planned):
+        LangGraph for the graph orchestration
+        AI Hub (IRIS) to abstract LLM provider
+        Ollama local for development (nomic-embed-text for embeddings)
+        OpenAI for demo/production
+
+    containers:
+        docker-compose with 6 services:
+            iris
+            labcore-api
+            reflab-api (mock)
+            vitacare-api (mock)
+            agent-api
+            ollama
+
+
+what is next:
+
+    Phase 1 — get IRIS + LabCore running with a live /health endpoint.
+    Phase 2 — define all 5 models and create tables in IRIS on startup.
+    Phase 3 — populate with synthetic data covering all agent scenarios.
+    Phase 4 — expose patients and practitioners via REST.
+    Phase 5 — expose service requests: GET, POST, cancel.
+    Phase 6 — expose exam catalog with can_perform filter.
+
+    after LabCore is complete:
+        build RefLab mock
+        build VitaCare mock
+        build the agent
+
+
+

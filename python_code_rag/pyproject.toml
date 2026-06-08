@@ -1,0 +1,21 @@
+[project]
+name = "python-code-rag"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "intersystems-irispython",
+    "ollama",
+    "httpx",
+    "tree-sitter",
+    "tree-sitter-python",
+    "mcp",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"

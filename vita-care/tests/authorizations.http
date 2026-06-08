@@ -1,0 +1,267 @@
+### POST — Default success (no trigger) — expect 201 approved
+POST http://localhost:8002/authorizations
+Content-Type: application/json
+
+{
+  "covenant_id": "COV-001",
+  "patient_id": "PAC-123",
+  "exam_code": "HEM001",
+  "exam_name": "Hemograma Completo",
+  "practitioner_id": "DR-456",
+  "cid_code": "Z00.0",
+  "justification": "Rotina anual"
+}
+
+### GET — Existing authorization — expect 200 approved
+GET http://localhost:8002/authorizations/AUTH-001
+
+### DELETE — Cancel authorization — expect 200 cancelled
+DELETE http://localhost:8002/authorizations/AUTH-001
+
+# ── Category 4 triggers (POST) ──────────────────────────────────────
+
+### POST — ERR-EXPIRED → 403 rejected
+POST http://localhost:8002/authorizations
+Content-Type: application/json
+
+{
+  "covenant_id": "ERR-EXPIRED",
+  "patient_id": "PAC-001",
+  "exam_code": "HEM001",
+  "practitioner_id": "DR-001",
+  "cid_code": "Z00.0"
+}
+
+### POST — ERR-NOT-COVERED → 422 rejected
+POST http://localhost:8002/authorizations
+Content-Type: application/json
+
+{
+  "covenant_id": "ERR-NOT-COVERED",
+  "patient_id": "PAC-001",
+  "exam_code": "HEM001",
+  "practitioner_id": "DR-001",
+  "cid_code": "Z00.0"
+}
+
+### POST — ERR-PATIENT-NOT-ENROLLED → 404 rejected
+POST http://localhost:8002/authorizations
+Content-Type: application/json
+
+{
+  "covenant_id": "ERR-PATIENT-NOT-ENROLLED",
+  "patient_id": "PAC-001",
+  "exam_code": "HEM001",
+  "practitioner_id": "DR-001",
+  "cid_code": "Z00.0"
+}
+
+### POST — ERR-AUTH-LIMIT → 429 rejected
+POST http://localhost:8002/authorizations
+Content-Type: application/json
+
+{
+  "covenant_id": "ERR-AUTH-LIMIT",
+  "patient_id": "PAC-001",
+  "exam_code": "HEM001",
+  "practitioner_id": "DR-001",
+  "cid_code": "Z00.0"
+}
+
+### POST — ERR-REFERRAL → 422 rejected
+POST http://localhost:8002/authorizations
+Content-Type: application/json
+
+{
+  "covenant_id": "ERR-REFERRAL",
+  "patient_id": "PAC-001",
+  "exam_code": "HEM001",
+  "practitioner_id": "DR-001",
+  "cid_code": "Z00.0"
+}
+
+### POST — ERR-JUSTIFICATION → 422 rejected
+POST http://localhost:8002/authorizations
+Content-Type: application/json
+
+{
+  "covenant_id": "ERR-JUSTIFICATION",
+  "patient_id": "PAC-001",
+  "exam_code": "HEM001",
+  "practitioner_id": "DR-001",
+  "cid_code": "Z00.0"
+}
+
+### POST — ERR-AUTH-EXPIRED → 403 rejected
+POST http://localhost:8002/authorizations
+Content-Type: application/json
+
+{
+  "covenant_id": "ERR-AUTH-EXPIRED",
+  "patient_id": "PAC-001",
+  "exam_code": "HEM001",
+  "practitioner_id": "DR-001",
+  "cid_code": "Z00.0"
+}
+
+### POST — ERR-CID → 422 rejected
+POST http://localhost:8002/authorizations
+Content-Type: application/json
+
+{
+  "covenant_id": "ERR-CID",
+  "patient_id": "PAC-001",
+  "exam_code": "HEM001",
+  "practitioner_id": "DR-001",
+  "cid_code": "Z00.0"
+}
+
+### POST — ERR-EXAM-LIMIT → 429 rejected
+POST http://localhost:8002/authorizations
+Content-Type: application/json
+
+{
+  "covenant_id": "ERR-EXAM-LIMIT",
+  "patient_id": "PAC-001",
+  "exam_code": "HEM001",
+  "practitioner_id": "DR-001",
+  "cid_code": "Z00.0"
+}
+
+### POST — ERR-DOCTOR → 403 rejected
+POST http://localhost:8002/authorizations
+Content-Type: application/json
+
+{
+  "covenant_id": "ERR-DOCTOR",
+  "patient_id": "PAC-001",
+  "exam_code": "HEM001",
+  "practitioner_id": "DR-001",
+  "cid_code": "Z00.0"
+}
+
+### POST — ERR-REFERRAL-SPECIALTY → 422 rejected
+POST http://localhost:8002/authorizations
+Content-Type: application/json
+
+{
+  "covenant_id": "ERR-REFERRAL-SPECIALTY",
+  "patient_id": "PAC-001",
+  "exam_code": "HEM001",
+  "practitioner_id": "DR-001",
+  "cid_code": "Z00.0"
+}
+
+### POST — ERR-PLAN-DOWNGRADED → 403 rejected
+POST http://localhost:8002/authorizations
+Content-Type: application/json
+
+{
+  "covenant_id": "ERR-PLAN-DOWNGRADED",
+  "patient_id": "PAC-001",
+  "exam_code": "HEM001",
+  "practitioner_id": "DR-001",
+  "cid_code": "Z00.0"
+}
+
+### POST — ERR-COPAY → 422 rejected
+POST http://localhost:8002/authorizations
+Content-Type: application/json
+
+{
+  "covenant_id": "ERR-COPAY",
+  "patient_id": "PAC-001",
+  "exam_code": "HEM001",
+  "practitioner_id": "DR-001",
+  "cid_code": "Z00.0"
+}
+
+### POST — ERR-TISS → 422 rejected
+POST http://localhost:8002/authorizations
+Content-Type: application/json
+
+{
+  "covenant_id": "ERR-TISS",
+  "patient_id": "PAC-001",
+  "exam_code": "HEM001",
+  "practitioner_id": "DR-001",
+  "cid_code": "Z00.0"
+}
+
+### POST — ERR-CRM → 403 rejected
+POST http://localhost:8002/authorizations
+Content-Type: application/json
+
+{
+  "covenant_id": "ERR-CRM",
+  "patient_id": "PAC-001",
+  "exam_code": "HEM001",
+  "practitioner_id": "DR-001",
+  "cid_code": "Z00.0"
+}
+
+# ── Category 4 triggers (GET) ────────────────────────────────────────
+
+### GET — ERR-AUTH-EXPIRED → 403 rejected
+GET http://localhost:8002/authorizations/ERR-AUTH-EXPIRED
+
+# ── Category 4 triggers (DELETE) ─────────────────────────────────────
+
+### DELETE — ERR-AUTH-EXPIRED → 403 rejected
+DELETE http://localhost:8002/authorizations/ERR-AUTH-EXPIRED
+
+### DELETE — ERR-EXPIRED → 403 rejected
+DELETE http://localhost:8002/authorizations/ERR-EXPIRED
+
+### DELETE — ERR-DOCTOR → 403 rejected
+DELETE http://localhost:8002/authorizations/ERR-DOCTOR
+
+# ── Contest demo scenarios ────────────────────────────────────────────
+
+### Demo scenario #2 step 1 — EXPIRED covenant → 403 rejected
+POST http://localhost:8002/authorizations
+Content-Type: application/json
+
+{
+  "covenant_id": "ERR-EXPIRED",
+  "patient_id": "PAC-001",
+  "exam_code": "ONC001",
+  "practitioner_id": "DR-001",
+  "cid_code": "C34.1"
+}
+
+### Demo scenario #2 step 2 — alternative plan COV-001 → 201 approved
+POST http://localhost:8002/authorizations
+Content-Type: application/json
+
+{
+  "covenant_id": "COV-001",
+  "patient_id": "PAC-001",
+  "exam_code": "ONC001",
+  "practitioner_id": "DR-001",
+  "cid_code": "C34.1"
+}
+
+### Demo scenario #5 step 1 — NOT-COVERED → 422 rejected
+POST http://localhost:8002/authorizations
+Content-Type: application/json
+
+{
+  "covenant_id": "ERR-NOT-COVERED",
+  "patient_id": "PAC-001",
+  "exam_code": "ONC001",
+  "practitioner_id": "DR-001",
+  "cid_code": "C34.1"
+}
+
+### Demo scenario #5 step 2 — alternative plan COV-BASIC → 201 approved
+POST http://localhost:8002/authorizations
+Content-Type: application/json
+
+{
+  "covenant_id": "COV-BASIC",
+  "patient_id": "PAC-001",
+  "exam_code": "ONC001",
+  "practitioner_id": "DR-001",
+  "cid_code": "C34.1"
+}

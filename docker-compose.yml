@@ -1,0 +1,131 @@
+services:
+  iris:
+    build:
+      context: ./iris
+      dockerfile: Dockerfile
+    ports:
+      - "1972:1972"
+      - "52773:52773"
+    volumes:
+      - iris-data:/durable
+    networks:
+      - care-sync-net
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bash",
+          "-lc",
+          "echo -e 'zn \"%SYS\"\\nset sc=##class(Security.Users).UnExpireUserPasswords(\"_SYSTEM\")\\nhalt' | iris session IRIS && echo > /dev/tcp/127.0.0.1/52773",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  labcore:
+    build:
+      context: ./core-lab
+      dockerfile: Dockerfile
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+    depends_on:
+      iris:
+        condition: service_healthy
+    environment:
+      IRIS_HOST: iris
+      IRIS_PORT: 1972
+      IRIS_NAMESPACE: USER
+      IRIS_USERNAME: _SYSTEM
+      IRIS_PASSWORD: SYS
+      AGENT_URL: http://agents:8003
+    restart: on-failure
+    ports:
+      - "8000:8000"
+    networks:
+      - care-sync-net
+
+  reflab:
+    build:
+      context: ./ref-lab
+      dockerfile: Dockerfile
+    command: uvicorn main:app --host 0.0.0.0 --port 8001 --reload
+    restart: on-failure
+    ports:
+      - "8001:8001"
+    networks:
+      - care-sync-net
+
+  vitacare:
+    build:
+      context: ./vita-care
+      dockerfile: Dockerfile
+    command: uvicorn main:app --host 0.0.0.0 --port 8002 --reload
+    restart: on-failure
+    ports:
+      - "8002:8002"
+    networks:
+      - care-sync-net
+
+  agents:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    build:
+      context: ./agents
+      dockerfile: Dockerfile
+    command: uvicorn main:app --host 0.0.0.0 --port 8003
+    depends_on:
+      iris:
+        condition: service_healthy
+    environment:
+      IRIS_HOST: iris
+      IRIS_PORT: 1972
+      IRIS_NAMESPACE: USER
+      IRIS_USERNAME: _SYSTEM
+      IRIS_PASSWORD: SYS
+      DEBUG_HOST: host.docker.internal
+      DEBUG_PORT: 5678
+      LLM_PROVIDER: deepseek/deepseek-chat
+      LLM_API_KEY: ${LLM_API_KEY}
+      EMBEDDING_PROVIDER: ollama/nomic-embed-text
+      EMBEDDING_API_BASE: http://host.docker.internal:11434
+      FHIR_BASE_URL: http://iris:52773/fhir/r4
+    restart: on-failure
+    ports:
+      - "8003:8003"
+    networks:
+      - care-sync-net
+
+  python-code-rag:
+    build:
+      context: ./python_code_rag
+    ports:
+      - "8004:8001"
+      - "8005:8005"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      IRIS_HOST: iris
+      IRIS_PORT: 1972
+      IRIS_NAMESPACE: USER
+      IRIS_USERNAME: _SYSTEM
+      IRIS_PASSWORD: SYS
+      OLLAMA_URL: http://host.docker.internal:11434
+      EMBED_PROVIDER: ollama
+      EMBED_MODEL: snowflake-arctic-embed2
+      EMBED_DIM: 1024
+      EMBED_PARALLELISM: 16
+      OLLAMA_NUM_CTX: 8192
+    volumes:
+      - ./core-lab:/core-lab:ro
+    networks:
+      - care-sync-net
+    depends_on:
+      iris:
+        condition: service_healthy
+
+volumes:
+  iris-data:
+
+networks:
+  care-sync-net:
+    driver: bridge

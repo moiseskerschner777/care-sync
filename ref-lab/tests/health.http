@@ -1,0 +1,5 @@
+### Variables
+@baseUrl = http://localhost:8001
+
+### GET /health — always 200
+GET {{baseUrl}}/health

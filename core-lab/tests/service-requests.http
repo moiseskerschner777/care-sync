@@ -1,0 +1,63 @@
+### Variables
+@baseUrl = http://localhost:8000
+@patientId = 11c5be47-3215-4890-a79f-9c2b2293a85e
+@practitionerId = 0f7f838f-5bbd-43b7-951c-02582e4272a3
+
+### GET service request by id (OS-00001 - routine, 2 performable exams)
+GET {{baseUrl}}/service-requests/51f63f5b-3db9-40c9-9344-b86cb7dc30fd
+
+### GET service request by id (OS-00002 - urgent, non-performable exam)
+GET {{baseUrl}}/service-requests/cd974d08-25b3-4dad-b7d6-9b5fd0d1c775
+
+### GET service request by id (OS-00005 - cancelled)
+GET {{baseUrl}}/service-requests/6f9036b2-7130-47a5-9574-2bf5ce213fc7
+
+### GET non-existent service request (expect 404)
+GET {{baseUrl}}/service-requests/nonexistent-id
+
+### POST create new service request
+POST {{baseUrl}}/service-requests
+Content-Type: application/json
+
+{
+  "patient_id": "{{patientId}}",
+  "practitioner_id": "{{practitionerId}}",
+  "priority": "ROUTINE",
+  "notes": null,
+  "items": [
+    {
+      "exam_code": "HEM001",
+      "exam_name": "Hemograma"
+    },
+    {
+      "exam_code": "GLI001",
+      "exam_name": "Glicemia"
+    }
+  ]
+}
+
+### POST urgent service request with non-performable exam
+POST {{baseUrl}}/service-requests
+Content-Type: application/json
+
+{
+  "patient_id": "{{patientId}}",
+  "practitioner_id": "{{practitionerId}}",
+  "priority": "URGENT",
+  "notes": "Teste de urgencia",
+  "items": [
+    {
+      "exam_code": "ONC001",
+      "exam_name": "Marcadores Tumorais"
+    }
+  ]
+}
+
+### PUT cancel service request (replace with id from POST response)
+PUT {{baseUrl}}/service-requests/51f63f5b-3db9-40c9-9344-b86cb7dc30fd/cancel
+
+### PUT double cancel (expect 422)
+PUT {{baseUrl}}/service-requests/51f63f5b-3db9-40c9-9344-b86cb7dc30fd/cancel
+
+### PUT cancel non-existent (expect 404)
+PUT {{baseUrl}}/service-requests/nonexistent-id/cancel

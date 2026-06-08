@@ -1,0 +1,8 @@
+### LabCore (System A) — expect 200 ok
+GET http://localhost:8000/health
+
+### RefLab (System B) — expect 200 ok, FHIR R4
+GET http://localhost:8001/health
+
+### VitaCare (System C) — expect 200 ok, proprietary REST
+GET http://localhost:8002/health

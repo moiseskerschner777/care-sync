@@ -1,0 +1,32 @@
+### Variables
+@baseUrl = http://localhost:8004
+
+### POST /index — app codebase
+POST {{baseUrl}}/index
+Content-Type: application/json
+
+{"path": "/core-lab"}
+
+### POST /index — 400: path not found
+POST {{baseUrl}}/index
+Content-Type: application/json
+
+{"path": "/workspace/nonexistent"}
+
+### POST /index — projectA (if volume mounted)
+POST {{baseUrl}}/index
+Content-Type: application/json
+
+{"path": "/workspace/projectA"}
+
+### POST /index — projectB (if volume mounted)
+POST {{baseUrl}}/index
+Content-Type: application/json
+
+{"path": "/workspace/projectB"}
+
+### POST /index — projectC (if volume mounted)
+POST {{baseUrl}}/index
+Content-Type: application/json
+
+{"path": "/workspace/projectC"}

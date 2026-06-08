@@ -1,0 +1,21 @@
+### Variables
+### GET exam by code (HEM001 - performable)
+GET {{baseUrl}}/exam-catalog/HEM001
+
+### GET exam by code (ONC001 - non-performable, routing signal)
+GET {{baseUrl}}/exam-catalog/ONC001
+
+### GET exam by code (GEN001 - non-performable)
+GET {{baseUrl}}/exam-catalog/GEN001
+
+### GET non-existent exam (expect 404)
+GET {{baseUrl}}/exam-catalog/nonexistent-code
+
+### GET all exams
+GET {{baseUrl}}/exam-catalog
+
+### GET exam catalog filtered — only routable (can_perform=false)
+GET {{baseUrl}}/exam-catalog?can_perform=false
+
+### GET exam catalog filtered — only performable (can_perform=true)
+GET {{baseUrl}}/exam-catalog?can_perform=true
