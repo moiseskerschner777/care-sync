@@ -86,14 +86,13 @@ def run_error_checker(state: Dict[str, Any]) -> Dict[str, Any]:
 
 def _collect_db_findings(patient_id, exam_code, service_request_id):
     async def _gather():
-        return await asyncio.gather(
-            check_patient_exists(patient_id),
-            check_exam_exists(exam_code),
-            get_exam_can_perform(exam_code),
-            get_service_request_status(service_request_id),
-            get_covenant_id(service_request_id),
-            return_exceptions=True,
-        )
+        coros = []
+        coros.append(check_patient_exists(patient_id) if patient_id else _none())
+        coros.append(check_exam_exists(exam_code) if exam_code else _none())
+        coros.append(get_exam_can_perform(exam_code) if exam_code else _none())
+        coros.append(get_service_request_status(service_request_id) if service_request_id else _none())
+        coros.append(get_covenant_id(service_request_id) if service_request_id else _none())
+        return await asyncio.gather(*coros, return_exceptions=True)
 
     try:
         results = asyncio.run(_gather())
@@ -112,6 +111,10 @@ def _collect_db_findings(patient_id, exam_code, service_request_id):
             "service_request_status": None,
             "covenant_id": None,
         }
+
+
+async def _none():
+    return None
 
 
 def _build_prompt(operation: str, system_target: str, payload_sent: Dict[str, Any],
@@ -174,16 +177,20 @@ Analyze the error using the following priority order:
 
 Return ONLY valid JSON with no markdown, no backticks, no preamble:
 {{
-  "origin": "ORIGIN_A | ORIGIN_B | CONTRATO | INFRA | AMBIGUOUS",
+  "origin": "ORIGIN_A | ORIGIN_B | CONTRACT | INFRA | AMBIGUOUS",
   "confidence": 0.0-1.0,
-  "evidence": "specific explanation with file/field references if available",
+  "evidence": "specific explanation with file/field references if available.
+               Base your reasoning strictly on: schema structure, field existence,
+               routing logic, and system contract violations.
+               Do NOT comment on whether a value appears synthetic, test-like,
+               or invalid by naming convention — reason only from observable facts.",
   "suggestion": "what should be fixed"
 }}
 
 Origin meanings:
 - ORIGIN_A: bug or mapping issue in LabCore code, or wrong data registered in LabCore
 - ORIGIN_B: problem on the external system side — it rejected a value that should be valid
-- CONTRATO: business rule or contract violation between systems
+- CONTRACT: business rule or contract violation between systems
 - INFRA: timeout, network failure, system down
 - AMBIGUOUS: not enough evidence to conclude — use when database access would be
   required to determine the true root cause"""
