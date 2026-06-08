@@ -145,7 +145,7 @@ def write_audit_event(operation: str, system_target: str,
     outcome_map = {
         "ORIGIN_A": "8",
         "ORIGIN_B": "8",
-        "CONTRATO": "4",
+        "CONTRACT": "4",
         "INFRA": "12",
         "AMBIGUOUS": "4",
     }

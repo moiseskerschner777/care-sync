@@ -1,9 +1,62 @@
-for me just, thinking better, remove the llms keys via front end
+Read the following files before doing anything:
+- .ai/steering/product.md
+- .ai/steering/structure.md
+- .ai/steering/tech.md
+- .ai/steering/agent.md
+- .ai/specs/labcore/spec.md
+- .ai/specs/labcore/design.md
 
-2. "Fix" confirmation — what does the Agent endpoint receive?
-    error_report.id
+---
 
-    i believe it can find the payload no?
+I need you to introduce a deliberate bug in LabCore (System A) to create a realistic
+error scenario for the Error Checker Agent to diagnose.
 
+The scenario is: a value-inverting bug in a LabCore function that causes RefLab
+(System B) to reject the request with an error, which the Error Checker Agent should
+then correctly attribute to ORIGIN_A by finding the faulty function via the
+python-code-rag MCP tool.
 
- Error list — columns visible in the list row (collapsed state)
+Do the following:
+
+1. Locate the function in LabCore that builds or transforms the payload sent to RefLab.
+   It must be a function that handles a field whose value RefLab validates strictly
+   (good candidates: sample_type mapping, can_perform flag, exam_code transform,
+   or any boolean/enum field).
+
+2. Introduce a minimal inversion bug — for example, flip a boolean, reverse a string
+   mapping, negate a numeric value, or swap two enum constants — so that the output
+   is always wrong in a deterministic and detectable way.
+
+3. Add a Python docstring to the modified function that describes what it is supposed
+   to do (its correct intended behavior), NOT what the buggy version actually does.
+   This docstring will be indexed by python-code-rag and must be accurate enough
+   that a semantic search for "value inversion" or "mapping error" can retrieve it.
+
+4. Do NOT modify RefLab. RefLab already returns an appropriate error when it receives
+   an invalid value — that existing behavior is what will trigger the scenario.
+
+5. Do NOT modify the Agent or the Error Checker. The bug lives only in LabCore.
+
+6. After introducing the bug, identify which existing .http request in medbridge.http
+   (or create a new minimal one) can be used to trigger this scenario end-to-end:
+   POST /agent/invoke → LabCore builds wrong payload → RefLab rejects → Error Checker
+   receives the error.
+
+7. Document the bug in a new file at:
+   .ai/specs/error-scenarios/bug_inverted_value.md
+
+   That file must contain:
+   - File and function name where the bug lives
+   - What the correct behavior should be
+   - What the bug does instead
+   - The exact field and value that RefLab sees vs what it expects
+   - The .http request that triggers the scenario
+   - The expected Error Checker output: origin=ORIGIN_A, confidence >= 0.70,
+     evidence pointing to the LabCore function found via python-code-rag
+
+One commit for the bug introduction. One commit for the documentation file.
+Commit messages: "bug: introduce inverted value in <function_name>" and
+"docs: add bug_inverted_value error scenario".
+
+HARD STOP after both commits: run docker compose up -d, call the trigger request,
+confirm RefLab returns an error, confirm it shows up in the agent error path.

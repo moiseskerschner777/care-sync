@@ -123,7 +123,7 @@ POST /service-requests  (LabCore)
                       LLM diagnoses error origin:
                         ORIGIN_A  — bug or data issue in LabCore
                         ORIGIN_B  — external system rejected the request
-                        CONTRATO  — business rule / contract violation
+                        CONTRACT  — business rule / contract violation
                         INFRA     — network or system failure
                         AMBIGUOUS — not enough evidence (confidence < 0.70)
                             ↓

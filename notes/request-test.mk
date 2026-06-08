@@ -13,6 +13,10 @@ create .http files, requests, one only, for these tests:
                 - so the agent must detect it
                 - code base errors, they cannot be fixed, but they must be reported.
 
+            4 - fail because of invalid code, lab-core
+                - can you create a function inverting values here?
+                - so the other side, the ref-lab, will return an error,
+                - and the rag, will detect, that this function, in the lab core, its inverting values
 
 
 but the 3 one is not, first mistake is, I must able to simulate errors, without clearing the cache:
@@ -27,6 +31,9 @@ but the 3 one is not, first mistake is, I must able to simulate errors, without 
                 - so now I am in the agent, to see what error was that:
                     - and the error must be:
                         - code base errors, they cannot be fixed, but they must be reported.
+
+
+
 
 
 

@@ -9,6 +9,7 @@
       <sourceFolder url="file://$MODULE_DIR$/mcp-database-server-iris/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/mcp-server-iris/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/mcp-server-iris/venv/lib64/python3.10/site-packages" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/ref-lab" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/.venv" />
       <excludeFolder url="file://$MODULE_DIR$/python_code_rag/.venv" />
       <excludeFolder url="file://$MODULE_DIR$/.venv" />

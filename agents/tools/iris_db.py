@@ -70,12 +70,4 @@ async def get_service_request_status(service_request_id: str) -> str | None:
 
 
 async def get_covenant_id(service_request_id: str) -> str | None:
-    try:
-        rows = await _execute_query(
-            "SELECT covenant_id FROM labcore.service_request WHERE id = ?",
-            [service_request_id],
-        )
-        return rows[0][0] if rows else None
-    except Exception:
-        logger.warning("get_covenant_id failed for %s", service_request_id, exc_info=True)
-        return None
+    return None
