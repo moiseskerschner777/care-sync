@@ -4,7 +4,7 @@ import os
 import uuid
 from datetime import datetime
 
-import httpx
+from litellm import embedding
 
 from config import settings
 
@@ -14,14 +14,13 @@ logger = logging.getLogger(__name__)
 
 
 def _get_embedding(text: str) -> list:
-    url = f"{settings.embedding_api_base}/api/embeddings"
-    resp = httpx.post(
-        url,
-        json={"model": "nomic-embed-text", "prompt": text},
-        timeout=30
+    response = embedding(
+        model=settings.embedding_provider,
+        input=[text],
+        api_base=settings.embedding_api_base or None,
+        api_key=settings.llm_api_key or None,
     )
-    resp.raise_for_status()
-    return resp.json()["embedding"]
+    return response.data[0]["embedding"]
 
 
 def _get_system_target(file_path: str) -> str:
