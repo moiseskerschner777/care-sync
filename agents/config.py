@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     embedding_provider: str = ""
     embedding_api_base: str = ""
     codebase_mcp_url: str = "http://python-code-rag:8005/sse"
+    iris_mcp_url: str = "http://mcp-database-server-iris:3001"
     fhir_base_url: str = Field(default="http://iris:52773/fhir/r4")
 
     model_config = {"env_prefix": "", "case_sensitive": False}
