@@ -1,0 +1,33 @@
+1. What triggers the Reporter Agent?
+Does it always run after Risk Classifier (regardless of risk level), or only on specific outcomes — e.g., only when something fails, or only when action is taken?
+    always
+
+2. What is the output target?
+You mentioned saving to an error_report IRIS table plus a vector embedding.
+Is that still the plan, or do you want a file output too (e.g., a .md report saved to disk or accessible via an endpoint)?
+
+agent_error_report:
+    id
+    created_at
+    system_target
+    operation
+    origin
+    confidence
+    evidence
+    suggestion
+    payload_sent
+    raw_error
+    audit_event_id
+    payload_hash
+    raw_error_hash
+
+maybe you dont need to create a table for that, I already have this one,
+maybe this this agent is not really a thing I guess
+
+
+3. Who consumes this report?
+Is it purely for audit/future similarity search, or will there be a human-facing endpoint — e.g., GET /agent/reports/{id} to retrieve past reports?
+
+
+4. What action does the Reporter take after saving?
+Does it just return the report to the Parent Agent and done, or does it also trigger something — like a webhook, a notification, or an automatic retry?
