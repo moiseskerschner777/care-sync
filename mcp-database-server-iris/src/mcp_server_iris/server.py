@@ -1,6 +1,13 @@
 import os
 import asyncio
 import logging
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+_ENV_FILE = Path(__file__).resolve().parent.parent.parent.parent / ".env"
+load_dotenv(_ENV_FILE)
+
 import iris as irisnative
 import mcp.types as types
 from mcp.server import Server

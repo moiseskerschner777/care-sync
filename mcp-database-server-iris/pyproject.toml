@@ -12,6 +12,7 @@ dependencies = [
     "mcp>=1.2.0",
     "starlette>=0.36.0",
     "uvicorn>=0.27.0",
+    "python-dotenv",
 ]
 
 [tool.setuptools.packages.find]
