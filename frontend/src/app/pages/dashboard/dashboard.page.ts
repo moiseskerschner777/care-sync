@@ -1,11 +1,12 @@
 import { Component } from '@angular/core';
 import { ErrorSummaryRowComponent } from '../../components/error-summary-row/error-summary-row.component';
+import { ErrorDetailModalComponent } from '../../components/error-detail-modal/error-detail-modal.component';
 import { ErrorReport } from '../../core/models/error-report.model';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [ErrorSummaryRowComponent],
+  imports: [ErrorSummaryRowComponent, ErrorDetailModalComponent],
   templateUrl: './dashboard.page.html'
 })
 export class DashboardPage {
@@ -25,4 +26,6 @@ export class DashboardPage {
     raw_error_hash: 'hash2',
     status: 'pending'
   };
+
+  modalVisible = true;
 }

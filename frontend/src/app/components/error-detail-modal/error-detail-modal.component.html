@@ -1,0 +1,78 @@
+<p-dialog
+  [visible]="visible"
+  (onHide)="close.emit()"
+  header="Error Report Detail"
+  [modal]="true"
+  [style]="{ width: '50rem' }"
+>
+  @if (report) {
+    <div class="flex flex-column gap-3">
+      <div class="field">
+        <label class="font-semibold block mb-1">ID</label>
+        <span class="text-sm">{{ report.id }}</span>
+      </div>
+      <div class="field">
+        <label class="font-semibold block mb-1">Created At</label>
+        <span class="text-sm">{{ report.created_at | date: 'medium' }}</span>
+      </div>
+      <div class="field">
+        <label class="font-semibold block mb-1">System Target</label>
+        <span class="text-sm">{{ report.system_target }}</span>
+      </div>
+      <div class="field">
+        <label class="font-semibold block mb-1">Operation</label>
+        <span class="text-sm">{{ report.operation }}</span>
+      </div>
+      <div class="field">
+        <label class="font-semibold block mb-1">Origin</label>
+        <span class="text-sm">{{ report.origin }}</span>
+      </div>
+      <div class="field">
+        <label class="font-semibold block mb-1">Confidence</label>
+        <span class="text-sm">{{ report.confidence }}</span>
+      </div>
+      <div class="field">
+        <label class="font-semibold block mb-1">Status</label>
+        <span class="text-sm">{{ report.status }}</span>
+      </div>
+      <div class="field">
+        <label class="font-semibold block mb-1">Evidence</label>
+        <pre class="text-sm p-2 surface-ground border-round">{{ report.evidence }}</pre>
+      </div>
+      <div class="field">
+        <label class="font-semibold block mb-1">Suggestion</label>
+        <pre class="text-sm p-2 surface-ground border-round">{{ report.suggestion || 'N/A' }}</pre>
+      </div>
+      <div class="field">
+        <label class="font-semibold block mb-1">Payload Sent</label>
+        <pre class="text-sm p-2 surface-ground border-round">{{ report.payload_sent }}</pre>
+      </div>
+      <div class="field">
+        <label class="font-semibold block mb-1">Raw Error</label>
+        <pre class="text-sm p-2 surface-ground border-round">{{ report.raw_error }}</pre>
+      </div>
+      <div class="field">
+        <label class="font-semibold block mb-1">Audit Event ID</label>
+        <span class="text-sm">{{ report.audit_event_id || 'N/A' }}</span>
+      </div>
+      <div class="field">
+        <label class="font-semibold block mb-1">Payload Hash</label>
+        <span class="text-sm">{{ report.payload_hash }}</span>
+      </div>
+      <div class="field">
+        <label class="font-semibold block mb-1">Raw Error Hash</label>
+        <span class="text-sm">{{ report.raw_error_hash }}</span>
+      </div>
+    </div>
+  }
+  <ng-template pTemplate="footer">
+    <div class="flex justify-content-end gap-2">
+      @if (showDismiss) {
+        <p-button label="Dismiss" severity="secondary" (onClick)="onDismiss()" />
+      }
+      @if (showConfirmFix) {
+        <p-button label="Confirm Fix" severity="success" (onClick)="onConfirmFix()" />
+      }
+    </div>
+  </ng-template>
+</p-dialog>
