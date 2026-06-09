@@ -261,7 +261,7 @@ curl -s -X POST http://localhost:8000/service-requests \
 Same operation with different patient/practitioner values and `GEN001`. The agent finds the cached schema from Test 1, replays it directly — no LLM, ~55ms.
 
 ```bash
-curl -s -X POST http://localhost:8000/service-requests \
+curl -s -X POST http://care-sync.kerschnertech.dev:8000/service-requests \
   -H "Content-Type: application/json" \
   -d '{
     "patient_id": "e36e8749-a762-45ea-bd6b-63a5745d6e07",

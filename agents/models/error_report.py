@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import Column, DateTime, Float, Index, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
 
@@ -21,6 +22,7 @@ class ErrorReport(Base):
     audit_event_id = Column(String(36), nullable=False)
     payload_hash = Column(String(64), nullable=True)
     raw_error_hash = Column(String(64), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
 
     __table_args__ = (
         Index(
