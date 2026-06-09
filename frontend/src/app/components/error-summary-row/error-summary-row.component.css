@@ -1,0 +1,53 @@
+.error-row {
+  display: flex;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-left: 4px solid;
+  background: var(--p-surface-card, #ffffff);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border-radius: 0 4px 4px 0;
+  gap: 0.75rem;
+}
+
+.col-created-at {
+  width: 140px;
+  flex-shrink: 0;
+  font-size: 0.8125rem;
+  color: var(--p-text-muted-color, #6b7280);
+}
+
+.col-system-target {
+  width: 100px;
+  flex-shrink: 0;
+  font-weight: 600;
+}
+
+.col-operation {
+  width: 140px;
+  flex-shrink: 0;
+  font-size: 0.8125rem;
+  color: var(--p-text-muted-color, #6b7280);
+}
+
+.col-origin {
+  width: 100px;
+  flex-shrink: 0;
+  font-size: 0.8125rem;
+  color: var(--p-text-muted-color, #6b7280);
+}
+
+.col-confidence {
+  width: 80px;
+  flex-shrink: 0;
+  font-size: 0.875rem;
+}
+
+.col-status {
+  width: 90px;
+  flex-shrink: 0;
+}
+
+.col-spacer {
+  flex: 1;
+  min-width: 0;
+}
