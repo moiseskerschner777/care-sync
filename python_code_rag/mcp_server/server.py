@@ -1,5 +1,5 @@
 import asyncio
-import json
+import json, logging
 from pathlib import Path
 
 from mcp.server import Server
@@ -10,6 +10,8 @@ from app import store, config
 from app.chunker import chunk_codebase
 from app.embedder import embed as sync_embed
 from app.retriever import retrieve as sync_retrieve, collection_name
+
+logger = logging.getLogger(__name__)
 
 server = Server("python-code-rag")
 
@@ -80,6 +82,7 @@ async def list_tools() -> list[Tool]:
 
 @server.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[TextContent]:
+    logger.info("MCP tool called: %s args=%s", name, arguments)
     if name == "search_code":
         return await _handle_search(arguments)
     elif name == "list_collections":
@@ -167,17 +170,21 @@ async def _handle_health() -> list[TextContent]:
         cur.execute("SELECT 1")
         cur.fetchone()
         conn.close()
+        logger.info("health_check: IRIS connection OK")
     except Exception as e:
         result["iris"] = str(e)
         result["status"] = "degraded"
+        logger.warning("health_check: IRIS connection FAILED — %s", e)
 
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.get(f"{config.OLLAMA_URL}/api/tags", timeout=3.0)
             resp.raise_for_status()
+            logger.info("health_check: Ollama %s OK", config.OLLAMA_URL)
     except Exception as e:
         result["ollama"] = str(e)
         result["status"] = "degraded"
+        logger.warning("health_check: Ollama %s FAILED — %s", config.OLLAMA_URL, e)
 
     return [TextContent(type="text", text=json.dumps(result, indent=2))]
 

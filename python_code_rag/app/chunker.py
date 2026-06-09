@@ -182,4 +182,4 @@ def chunk_codebase(root: Path) -> list:
         if any(p in skip_dirs for p in rel.parts[:-1]):
             continue
         all_chunks.extend(chunk_file(py_file, root))
-    return all_chunks
+    return [c for c in all_chunks if c.text.strip()]
