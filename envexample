@@ -1,8 +1,27 @@
+IRIS_HOST=iris
+IRIS_PORT=1972
+IRIS_NAMESPACE=USER
+IRIS_USERNAME=_SYSTEM
+IRIS_PASSWORD=SYS
+IRIS_HOSTNAME=iris
+
+AGENT_URL=http://agents:8003
+FHIR_BASE_URL=http://iris:52773/fhir/r4
+CODEBASE_MCP_URL=http://python-code-rag:8005/sse
+IRIS_MCP_URL=http://mcp-database-server-iris:3001
+
 LLM_PROVIDER=deepseek/deepseek-chat
-LLM_API_KEY=your_openai_api_key_here
-LLM_API_BASE=xxx
+LLM_API_KEY=your_api_key_here
+LLM_API_BASE=https://api.deepseek.com
 
 EMBEDDING_PROVIDER=ollama/nomic-embed-text
 EMBEDDING_API_BASE=http://host.docker.internal:11434
 EMBEDDING_API_KEY=xxx
 
+OLLAMA_URL=http://host.docker.internal:11434
+EMBED_DIM=1024
+EMBED_PARALLELISM=16
+OLLAMA_NUM_CTX=8192
+
+DEBUG_HOST=host.docker.internal
+DEBUG_PORT=5678

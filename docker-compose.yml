@@ -32,12 +32,14 @@ services:
       iris:
         condition: service_healthy
     environment:
-      IRIS_HOST: iris
-      IRIS_PORT: 1972
-      IRIS_NAMESPACE: USER
-      IRIS_USERNAME: _SYSTEM
-      IRIS_PASSWORD: SYS
-      AGENT_URL: http://agents:8003
+      IRIS_HOST: ${IRIS_HOST}
+      IRIS_PORT: ${IRIS_PORT}
+      IRIS_NAMESPACE: ${IRIS_NAMESPACE}
+      IRIS_USERNAME: ${IRIS_USERNAME}
+      IRIS_PASSWORD: ${IRIS_PASSWORD}
+      AGENT_URL: ${AGENT_URL}
+      DEBUG_HOST: ${DEBUG_HOST}
+      DEBUG_PORT: ${DEBUG_PORT}
     restart: on-failure
     ports:
       - "8000:8000"
@@ -79,19 +81,22 @@ services:
       mcp-database-server-iris:
         condition: service_started
     environment:
-      IRIS_HOST: iris
-      IRIS_PORT: 1972
-      IRIS_NAMESPACE: USER
-      IRIS_USERNAME: _SYSTEM
-      IRIS_PASSWORD: SYS
-      DEBUG_HOST: host.docker.internal
-      DEBUG_PORT: 5678
+      IRIS_HOST: ${IRIS_HOST}
+      IRIS_PORT: ${IRIS_PORT}
+      IRIS_NAMESPACE: ${IRIS_NAMESPACE}
+      IRIS_USERNAME: ${IRIS_USERNAME}
+      IRIS_PASSWORD: ${IRIS_PASSWORD}
+      DEBUG_HOST: ${DEBUG_HOST}
+      DEBUG_PORT: ${DEBUG_PORT}
       LLM_PROVIDER: ${LLM_PROVIDER}
       LLM_API_KEY: ${LLM_API_KEY}
+      LLM_API_BASE: ${LLM_API_BASE}
       EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER}
       EMBEDDING_API_KEY: ${EMBEDDING_API_KEY}
       EMBEDDING_API_BASE: ${EMBEDDING_API_BASE}
-      FHIR_BASE_URL: http://iris:52773/fhir/r4
+      FHIR_BASE_URL: ${FHIR_BASE_URL}
+      CODEBASE_MCP_URL: ${CODEBASE_MCP_URL}
+      IRIS_MCP_URL: ${IRIS_MCP_URL}
     restart: on-failure
     ports:
       - "8003:8003"
@@ -107,18 +112,18 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
-      IRIS_HOST: iris
-      IRIS_PORT: 1972
-      IRIS_NAMESPACE: USER
-      IRIS_USERNAME: _SYSTEM
-      IRIS_PASSWORD: SYS
-      OLLAMA_URL: http://host.docker.internal:11434
+      IRIS_HOST: ${IRIS_HOST}
+      IRIS_PORT: ${IRIS_PORT}
+      IRIS_NAMESPACE: ${IRIS_NAMESPACE}
+      IRIS_USERNAME: ${IRIS_USERNAME}
+      IRIS_PASSWORD: ${IRIS_PASSWORD}
+      OLLAMA_URL: ${OLLAMA_URL}
       EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-ollama}
       EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
       EMBEDDING_API_BASE: ${EMBEDDING_API_BASE:-}
-      EMBED_DIM: 1024
-      EMBED_PARALLELISM: 16
-      OLLAMA_NUM_CTX: 8192
+      EMBED_DIM: ${EMBED_DIM}
+      EMBED_PARALLELISM: ${EMBED_PARALLELISM}
+      OLLAMA_NUM_CTX: ${OLLAMA_NUM_CTX}
     volumes:
       - ./core-lab:/core-lab:ro
     networks:
@@ -133,11 +138,11 @@ services:
     ports:
       - "8006:3001"
     environment:
-      IRIS_HOSTNAME: iris
-      IRIS_PORT: 1972
-      IRIS_NAMESPACE: USER
-      IRIS_USERNAME: _SYSTEM
-      IRIS_PASSWORD: SYS
+      IRIS_HOSTNAME: ${IRIS_HOSTNAME}
+      IRIS_PORT: ${IRIS_PORT}
+      IRIS_NAMESPACE: ${IRIS_NAMESPACE}
+      IRIS_USERNAME: ${IRIS_USERNAME}
+      IRIS_PASSWORD: ${IRIS_PASSWORD}
     networks:
       - care-sync-net
     depends_on:

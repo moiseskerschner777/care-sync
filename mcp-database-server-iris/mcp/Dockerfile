@@ -24,13 +24,6 @@ COPY example/requirements-dev.txt /app/example/requirements-dev.txt
 # Install example dependencies
 RUN uv pip install --system --no-cache -r /app/example/requirements-dev.txt
 
-# Environment variables for IRIS connection
-ENV IRIS_HOSTNAME=iris
-ENV IRIS_PORT=1972
-ENV IRIS_NAMESPACE=USER
-ENV IRIS_USERNAME=_SYSTEM
-ENV IRIS_PASSWORD=SYS
-
 WORKDIR /app/example
 
 CMD ["python", "mcp-server.py"]

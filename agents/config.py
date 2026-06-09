@@ -1,5 +1,9 @@
+from pathlib import Path
+
 from pydantic import Field
 from pydantic_settings import BaseSettings
+
+_ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 
 
 class Settings(BaseSettings):
@@ -19,7 +23,12 @@ class Settings(BaseSettings):
     iris_mcp_url: str = "http://mcp-database-server-iris:3001"
     fhir_base_url: str = Field(default="http://iris:52773/fhir/r4")
 
-    model_config = {"env_prefix": "", "case_sensitive": False}
+    model_config = {
+        "env_prefix": "",
+        "case_sensitive": False,
+        "env_file": str(_ENV_FILE),
+        "env_file_encoding": "utf-8",
+    }
 
 
 settings = Settings()
