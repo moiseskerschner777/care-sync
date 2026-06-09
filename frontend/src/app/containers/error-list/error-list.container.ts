@@ -1,70 +1,51 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { Button } from 'primeng/button';
+import { Toast } from 'primeng/toast';
+import { ProgressSpinner } from 'primeng/progressspinner';
+import { MessageService } from 'primeng/api';
 import { ErrorSummaryRowComponent } from '../../components/error-summary-row/error-summary-row.component';
 import { ErrorDetailModalComponent } from '../../components/error-detail-modal/error-detail-modal.component';
 import { ErrorReport } from '../../core/models/error-report.model';
-
-const MOCK_REPORTS: ErrorReport[] = [
-  {
-    id: 'err-001',
-    created_at: '2025-06-09T08:15:00Z',
-    system_target: 'RefLab',
-    operation: 'create_order',
-    origin: 'ORIGIN_B',
-    confidence: 0.85,
-    evidence: 'Mismatch in required fields validation',
-    suggestion: 'Retry with corrected payload structure',
-    payload_sent: '{"patient_id": "123", "test": "CBC"}',
-    raw_error: '{"status": 400, "detail": "Invalid field format"}',
-    audit_event_id: 'audit-001',
-    payload_hash: 'ph1',
-    raw_error_hash: 'reh1',
-    status: 'pending'
-  },
-  {
-    id: 'err-002',
-    created_at: '2025-06-09T09:30:00Z',
-    system_target: 'VitaCare',
-    operation: 'validate_coverage',
-    origin: 'CONTRATO',
-    confidence: 0.45,
-    evidence: 'Contract number not found in system',
-    suggestion: null,
-    payload_sent: '{"contract": "CT-999"}',
-    raw_error: '{"status": 404, "detail": "Contract not found"}',
-    audit_event_id: 'audit-002',
-    payload_hash: 'ph2',
-    raw_error_hash: 'reh2',
-    status: 'pending'
-  },
-  {
-    id: 'err-003',
-    created_at: '2025-06-08T14:00:00Z',
-    system_target: 'LabCore',
-    operation: 'update_order',
-    origin: 'INFRA',
-    confidence: 0.92,
-    evidence: 'Connection timeout after 30s',
-    suggestion: 'Retry with exponential backoff',
-    payload_sent: '{"order_id": "ORD-456"}',
-    raw_error: '{"status": 504, "detail": "Gateway timeout"}',
-    audit_event_id: null,
-    payload_hash: 'ph3',
-    raw_error_hash: 'reh3',
-    status: 'fixed'
-  }
-];
+import { ErrorReportService } from '../../core/services/error-report.service';
 
 @Component({
   selector: 'app-error-list',
   standalone: true,
-  imports: [Button, ErrorSummaryRowComponent, ErrorDetailModalComponent],
+  imports: [Button, Toast, ProgressSpinner, ErrorSummaryRowComponent, ErrorDetailModalComponent],
   templateUrl: './error-list.container.html'
 })
-export class ErrorListContainer {
-  reports: ErrorReport[] = MOCK_REPORTS;
+export class ErrorListContainer implements OnInit {
+  reports: ErrorReport[] = [];
   selectedReport: ErrorReport | null = null;
   modalVisible = false;
+  loading = true;
+
+  constructor(
+    private errorReportService: ErrorReportService,
+    private messageService: MessageService
+  ) {}
+
+  ngOnInit(): void {
+    this.loadReports();
+  }
+
+  loadReports(): void {
+    this.loading = true;
+    this.errorReportService.getReports().subscribe({
+      next: (reports) => {
+        this.reports = reports;
+        this.loading = false;
+      },
+      error: (err) => {
+        this.loading = false;
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: err.message || 'Failed to load error reports'
+        });
+      }
+    });
+  }
 
   onOpenDetail(report: ErrorReport): void {
     this.selectedReport = report;
