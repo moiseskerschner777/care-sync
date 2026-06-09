@@ -1,0 +1,13 @@
+<p-card>
+  <div class="flex align-items-center justify-content-between flex-wrap gap-3">
+    <div class="flex align-items-center gap-3 flex-wrap">
+      <span class="text-sm text-500">{{ report.created_at | date: 'short' }}</span>
+      <span class="font-semibold">{{ report.system_target }}</span>
+      <span class="text-500">{{ report.operation }}</span>
+      <span class="text-500">{{ report.origin }}</span>
+      <span>{{ report.confidence | percent: '1.0-2' }}</span>
+      <p-tag [value]="report.status" [severity]="getStatusSeverity()" />
+    </div>
+    <p-button label="Open" size="small" (onClick)="openDetail.emit(report)" />
+  </div>
+</p-card>
