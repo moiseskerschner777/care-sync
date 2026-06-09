@@ -21,7 +21,7 @@ async def _embed_batch(client: httpx.AsyncClient, texts: list[str]) -> list[list
     resp = await client.post(
         f"{config.OLLAMA_URL}/api/embed",
         json={"model": config.EMBED_MODEL, "input": texts, "options": {"num_ctx": config.OLLAMA_NUM_CTX}},
-        timeout=httpx.Timeout(connect=5.0, read=180.0, write=10.0, pool=5.0),
+        timeout=httpx.Timeout(connect=30.0, read=180.0, write=30.0, pool=10.0),
     )
     resp.raise_for_status()
     result = resp.json()["embeddings"]
@@ -52,7 +52,7 @@ async def _openai_embed_batch(client: httpx.AsyncClient, texts: list[str], api_k
         f"{base_url}/embeddings",
         json={"model": model, "input": texts},
         headers={"Authorization": f"Bearer {api_key}"},
-        timeout=httpx.Timeout(connect=5.0, read=180.0, write=10.0, pool=5.0),
+        timeout=httpx.Timeout(connect=30.0, read=180.0, write=30.0, pool=10.0),
     )
     if resp.is_error:
         logger.error("OpenAI embeddings error: %s — %s", resp.status_code, resp.text)
