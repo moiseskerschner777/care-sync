@@ -18,7 +18,7 @@ def _get_embedding(text: str) -> list:
         model=settings.embedding_provider,
         input=[text],
         api_base=settings.embedding_api_base or None,
-        api_key=settings.llm_api_key or None,
+        api_key=settings.embedding_api_key or None,
     )
     return response.data[0]["embedding"]
 

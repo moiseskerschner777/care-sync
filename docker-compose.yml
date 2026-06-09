@@ -89,6 +89,7 @@ services:
       LLM_PROVIDER: ${LLM_PROVIDER}
       LLM_API_KEY: ${LLM_API_KEY}
       EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER}
+      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY}
       EMBEDDING_API_BASE: ${EMBEDDING_API_BASE}
       FHIR_BASE_URL: http://iris:52773/fhir/r4
     restart: on-failure
@@ -112,8 +113,9 @@ services:
       IRIS_USERNAME: _SYSTEM
       IRIS_PASSWORD: SYS
       OLLAMA_URL: http://host.docker.internal:11434
-      EMBED_PROVIDER: ollama
-      EMBED_MODEL: snowflake-arctic-embed2
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-ollama}
+      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
+      EMBEDDING_API_BASE: ${EMBEDDING_API_BASE:-}
       EMBED_DIM: 1024
       EMBED_PARALLELISM: 16
       OLLAMA_NUM_CTX: 8192
