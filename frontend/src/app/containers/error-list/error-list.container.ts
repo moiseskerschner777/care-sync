@@ -79,4 +79,23 @@ export class ErrorListContainer implements OnInit {
       }
     });
   }
+
+  onDismiss(id: string): void {
+    this.errorReportService.dismiss(id).subscribe({
+      next: () => {
+        const report = this.reports.find(r => r.id === id);
+        if (report) {
+          report.status = 'dismissed';
+        }
+        this.modalVisible = false;
+      },
+      error: (err) => {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: err.message || 'Failed to dismiss report'
+        });
+      }
+    });
+  }
 }
