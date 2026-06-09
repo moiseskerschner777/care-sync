@@ -11,15 +11,15 @@ from models.knowledge_base import KnowledgeBase
 logger = logging.getLogger(__name__)
 
 
-def _embed_sync(model: str, input: list[str], api_base: str | None):
+def _embed_sync(model: str, input: list[str], api_base: str | None, api_key: str | None = None):
     """Run embedding synchronously, dispatching to a thread if an event loop is running."""
     try:
         import asyncio
         asyncio.get_running_loop()
     except RuntimeError:
-        return embedding(model=model, input=input, api_base=api_base)
+        return embedding(model=model, input=input, api_base=api_base, api_key=api_key)
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-        return pool.submit(embedding, model=model, input=input, api_base=api_base).result()
+        return pool.submit(embedding, model=model, input=input, api_base=api_base, api_key=api_key).result()
 
 
 def _normalize_target(name: str) -> str:
@@ -42,6 +42,7 @@ def search_knowledge_base(db, system_target: str, query: str, top_k: int = 5) ->
             model,
             [query],
             settings.embedding_api_base or None,
+            settings.embedding_api_key or None,
         )
         query_embedding = emb_response["data"][0]["embedding"]
         elapsed = time.time() - start

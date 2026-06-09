@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     llm_api_key: str = ""
     llm_api_base: str = ""
     embedding_provider: str = ""
+    embedding_api_key: str = ""
     embedding_api_base: str = ""
     codebase_mcp_url: str = "http://python-code-rag:8005/sse"
     iris_mcp_url: str = "http://mcp-database-server-iris:3001"

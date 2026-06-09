@@ -211,6 +211,7 @@ LLM_API_KEY=<your_api_key>
 LLM_API_BASE=
 
 EMBEDDING_PROVIDER=<provider/model>      # embedding model — for doc indexing and vector search
+EMBEDDING_API_KEY=<embedding_api_key>
 EMBEDDING_API_BASE=<embedding_api_base>
 ```
 
