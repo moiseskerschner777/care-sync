@@ -55,4 +55,28 @@ export class ErrorListContainer implements OnInit {
   onCloseModal(): void {
     this.modalVisible = false;
   }
+
+  onConfirmFix(id: string): void {
+    this.errorReportService.confirmFix(id).subscribe({
+      next: (response) => {
+        if (response.status === 'fixed') {
+          const report = this.reports.find(r => r.id === id);
+          if (report) {
+            report.status = 'fixed';
+          }
+          this.modalVisible = false;
+        } else if (response.status === 'pending') {
+          this.loadReports();
+          this.modalVisible = false;
+        }
+      },
+      error: (err) => {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: err.message || 'Failed to confirm fix'
+        });
+      }
+    });
+  }
 }
