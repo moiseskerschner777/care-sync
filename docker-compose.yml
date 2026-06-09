@@ -1,4 +1,15 @@
 services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "4200:80"
+    depends_on:
+      - agents
+    networks:
+      - care-sync-net
+
   iris:
     build:
       context: ./iris
