@@ -4,6 +4,7 @@ import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Query, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import desc
 
 from config import settings
@@ -12,6 +13,7 @@ from graph import graph
 from memory.knowledge_base_indexer import index_knowledge_base
 from models import knowledge_base, mapping_cache
 from models.fhir_resource import FHIRResource
+from routes.error_reports import router as error_reports_router
 
 logging.getLogger("LiteLLM").setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -45,6 +47,16 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="MedBridge Agent", version="0.1.0", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:4200", "http://frontend:80"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(error_reports_router)
 
 
 @app.post("/agent/invoke")

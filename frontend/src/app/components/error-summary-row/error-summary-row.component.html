@@ -1,0 +1,12 @@
+<div class="error-row" [style.borderLeftColor]="getStatusColor()">
+  <span class="col-created-at">{{ report.created_at | date: 'MMM d, h:mm a' }}</span>
+  <span class="col-system-target">{{ report.system_target }}</span>
+  <span class="col-operation">{{ report.operation }}</span>
+  <span class="col-origin">{{ report.origin }}</span>
+  <span class="col-confidence">{{ report.confidence | percent: '1.0-1' }}</span>
+  <span class="col-status">
+    <p-tag [value]="report.status" [severity]="getStatusSeverity()" />
+  </span>
+  <span class="col-spacer"></span>
+  <p-button label="Open" size="small" (onClick)="openDetail.emit(report)" />
+</div>
