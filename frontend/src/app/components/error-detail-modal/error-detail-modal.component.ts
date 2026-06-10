@@ -64,6 +64,11 @@ export class ErrorDetailModalComponent implements OnChanges {
     }
   }
 
+  getParagraphs(text: string): string[] {
+    if (!text) return [];
+    return text.split(/\n\n+/);
+  }
+
   getOperationLabel(): string {
     return this.report ? operationLabel(this.report.operation) : '';
   }
