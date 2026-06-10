@@ -11,6 +11,7 @@ import { ErrorReport } from '../../core/models/error-report.model';
   templateUrl: './error-detail-modal.component.html'
 })
 export class ErrorDetailModalComponent {
+
   @Input() report: ErrorReport | null = null;
   @Input() visible = false;
   @Output() close = new EventEmitter<void>();

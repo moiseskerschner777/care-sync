@@ -10,6 +10,10 @@
     <div class="flex justify-content-center p-6">
       <p-progressSpinner />
     </div>
+  } @else if (reports.length === 0) {
+    <div class="flex justify-content-center p-6 text-color-secondary">
+      No errors found.
+    </div>
   } @else {
     <div class="flex flex-column gap-3">
       @for (report of reports; track report.id) {

@@ -4,6 +4,7 @@
   header="Error Report Detail"
   [modal]="true"
   [style]="{ width: '50rem' }"
+  [closable]="true"
 >
   @if (report) {
     <div class="flex flex-column gap-3">
@@ -27,10 +28,7 @@
         <label class="font-semibold block mb-1">Origin</label>
         <span class="text-sm">{{ report.origin }}</span>
       </div>
-      <div class="field">
-        <label class="font-semibold block mb-1">Confidence</label>
-        <span class="text-sm">{{ report.confidence }}</span>
-      </div>
+
       <div class="field">
         <label class="font-semibold block mb-1">Status</label>
         <span class="text-sm">{{ report.status }}</span>
