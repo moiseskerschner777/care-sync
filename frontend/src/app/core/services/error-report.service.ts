@@ -9,6 +9,7 @@ import { environment } from '../../../environments/environment';
 })
 export class ErrorReportService {
   private apiBase = environment.apiBase;
+  private labCoreBase = environment.labCoreBase;
 
   constructor(private http: HttpClient) {}
 
@@ -22,5 +23,9 @@ export class ErrorReportService {
 
   dismiss(id: string): Observable<void> {
     return this.http.post<void>(`${this.apiBase}/error-reports/${id}/dismiss`, {});
+  }
+
+  runSimulation(payload: object): Observable<object> {
+    return this.http.post<object>(`${this.labCoreBase}/service-requests`, payload);
   }
 }
