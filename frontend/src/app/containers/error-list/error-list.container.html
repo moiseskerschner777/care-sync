@@ -27,8 +27,7 @@
 
   <app-error-detail-modal
     [report]="selectedReport"
-    [visible]="modalVisible"
-    (close)="onCloseModal()"
+    [(visible)]="modalVisible"
     (confirmFix)="onConfirmFix($event)"
     (dismiss)="onDismiss($event)"
   />

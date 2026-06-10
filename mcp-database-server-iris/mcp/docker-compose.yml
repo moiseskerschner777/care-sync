@@ -21,7 +21,7 @@ services:
   mcp-client:
     build:
       context: ..
-      dockerfile: /Dockerfile
+      dockerfile: ./Dockerfile
     environment:
       - IRIS_HOSTNAME=iris
       - IRIS_PORT=1972

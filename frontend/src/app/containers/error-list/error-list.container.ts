@@ -52,10 +52,6 @@ export class ErrorListContainer implements OnInit {
     this.modalVisible = true;
   }
 
-  onCloseModal(): void {
-    this.modalVisible = false;
-  }
-
   onConfirmFix(id: string): void {
     this.errorReportService.confirmFix(id).subscribe({
       next: (response) => {
