@@ -1,0 +1,14 @@
+<p-card>
+  <ng-template #header>
+    <div class="flex align-items-center justify-content-between px-3 pt-3">
+      <span class="font-bold">{{ scenario.title }}</span>
+      <p-tag [value]="scenario.tag" [severity]="getTagSeverity()" />
+    </div>
+  </ng-template>
+  <p>{{ scenario.description }}</p>
+  <ng-template #footer>
+    <div class="flex justify-content-end">
+      <p-button label="Run" [disabled]="disabled" (onClick)="run.emit(scenario)" />
+    </div>
+  </ng-template>
+</p-card>

@@ -1,0 +1,36 @@
+<p-toast />
+
+<div class="p-4">
+  <h1 class="text-2xl font-bold mb-4">Simulations</h1>
+
+  <div class="grid">
+    @for (scenario of scenarios; track scenario.id) {
+      <div class="col-12 md:col-6">
+        <app-simulation-card
+          [scenario]="scenario"
+          [disabled]="running"
+          (run)="onRun($event)"
+        />
+      </div>
+    }
+  </div>
+</div>
+
+<p-dialog
+  [(visible)]="successVisible"
+  header="Request Accepted"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '40rem' }"
+>
+  @if (lastRan) {
+    <p>Scenario '{{ lastRan.title }}' was sent to LabCore successfully.</p>
+    <p>The agent is now processing the request — this may take up to 1 minute depending on cache state and LLM response time.</p>
+    <p>Go to Error Reports to see the result.</p>
+  }
+  <ng-template pTemplate="footer">
+    <div class="flex justify-content-end">
+      <p-button label="Go to Error Reports" (onClick)="navigateToReports()" />
+    </div>
+  </ng-template>
+</p-dialog>
