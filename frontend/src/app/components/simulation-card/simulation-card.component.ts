@@ -12,6 +12,7 @@ import { SimulationScenario } from '../../core/models/simulation.model';
 })
 export class SimulationCardComponent {
   @Input({ required: true }) scenario!: SimulationScenario;
+  @Input() disabled = false;
   @Output() run = new EventEmitter<SimulationScenario>();
 
   getTagSeverity(): 'info' | 'success' | 'danger' | 'warning' {

@@ -8,7 +8,7 @@
   <p>{{ scenario.description }}</p>
   <ng-template #footer>
     <div class="flex justify-content-end">
-      <p-button label="Run" (onClick)="run.emit(scenario)" />
+      <p-button label="Run" [disabled]="disabled" (onClick)="run.emit(scenario)" />
     </div>
   </ng-template>
 </p-card>
