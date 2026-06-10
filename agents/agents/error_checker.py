@@ -17,6 +17,7 @@ from tools.iris_db import (
     get_service_request_status,
 )
 from tools.knowledge_base import search_knowledge_base
+from tools.llm_limiter import check_limits, record_usage
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +64,7 @@ def run_error_checker(state: Dict[str, Any]) -> Dict[str, Any]:
     state["_db_findings"] = db_findings
 
     prompt = _build_prompt(operation, system_target, payload_sent, http_code, error_body, code_chunks, doc_chunks, db_findings)
-    result = _call_llm(prompt)
+    result = _call_llm(prompt, state)
     diag = _parse_llm_response(result)
 
     sources = []
@@ -196,7 +197,10 @@ Origin meanings:
   required to determine the true root cause"""
 
 
-def _call_llm(prompt: str) -> str:
+def _call_llm(prompt: str, state: Dict[str, Any]) -> str:
+    if check_limits(state):
+        return json.dumps({"origin": "INFRA", "confidence": 0.0, "evidence": "LLM token limit reached", "suggestion": "increase LLM_PROVIDER_MAX_TOKENS or reset usage table"})
+
     model = settings.llm_provider
     start = time.time()
     try:
@@ -208,13 +212,16 @@ def _call_llm(prompt: str) -> str:
         )
         text = response["choices"][0]["message"]["content"]
         elapsed = time.time() - start
-        total_tokens = response.get("usage", {}).get("total_tokens", 0)
+        usage = response.get("usage", {})
+        total_tokens = usage.get("total_tokens", 0)
         logger.info("✓ error diagnosis in %.1fs | tokens=%d", elapsed, total_tokens)
         logger.info("diagnosis:\n%s", text[:1000])
+        record_usage(state, usage, elapsed, success=True)
         return text
     except Exception as e:
         elapsed = time.time() - start
         logger.error("LLM call failed time_taken=%.2fs error=%s", elapsed, e)
+        record_usage(state, None, elapsed, success=False, error_msg=str(e))
         return json.dumps({"origin": "AMBIGUOUS", "confidence": 0.0, "evidence": f"LLM call failed: {e}", "suggestion": "retry or escalate to human"})
 
 
