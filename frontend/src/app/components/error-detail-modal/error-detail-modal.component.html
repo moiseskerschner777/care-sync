@@ -1,6 +1,6 @@
 <p-dialog
-  [visible]="visible"
-  (onHide)="visibleChange.emit(false)"
+  [(visible)]="dialogVisible"
+  (onHide)="onHide()"
   header="Error Report Detail"
   [modal]="true"
   [style]="{ width: '50rem' }"

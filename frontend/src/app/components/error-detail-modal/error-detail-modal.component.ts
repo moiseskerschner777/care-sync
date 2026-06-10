@@ -20,12 +20,20 @@ export class ErrorDetailModalComponent implements OnChanges {
   @Output() confirmFix = new EventEmitter<string>();
   @Output() dismiss = new EventEmitter<string>();
 
+  dialogVisible = false;
   showRaw = false;
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['visible'] && !changes['visible'].currentValue) {
-      this.showRaw = false;
+    if (changes['visible']) {
+      this.dialogVisible = changes['visible'].currentValue;
+      if (!changes['visible'].currentValue) {
+        this.showRaw = false;
+      }
     }
+  }
+
+  onHide(): void {
+    this.visibleChange.emit(false);
   }
 
   formatJson(value: string): string {
