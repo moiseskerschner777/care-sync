@@ -1,69 +1,140 @@
 <p-dialog
-  [visible]="visible"
-  (onHide)="close.emit()"
+  [(visible)]="dialogVisible"
+  (onHide)="onHide()"
   header="Error Report Detail"
   [modal]="true"
   [style]="{ width: '50rem' }"
+  [closable]="true"
 >
   @if (report) {
-    <div class="flex flex-column gap-3">
-      <div class="field">
-        <label class="font-semibold block mb-1">ID</label>
-        <span class="text-sm">{{ report.id }}</span>
+
+    <!-- 1. METADATA GRID -->
+    <div class="grid mb-3">
+      <div class="col-6">
+        <span class="text-xs text-color-secondary uppercase font-semibold">System Target</span>
+        <p class="mt-1 mb-0 font-semibold">{{ report.system_target }}</p>
       </div>
-      <div class="field">
-        <label class="font-semibold block mb-1">Created At</label>
-        <span class="text-sm">{{ report.created_at | date: 'medium' }}</span>
+      <div class="col-6">
+        <span class="text-xs text-color-secondary uppercase font-semibold">Operation</span>
+        <p class="mt-1 mb-0">{{ getOperationLabel() }}</p>
       </div>
-      <div class="field">
-        <label class="font-semibold block mb-1">System Target</label>
-        <span class="text-sm">{{ report.system_target }}</span>
+      <div class="col-6">
+        <span class="text-xs text-color-secondary uppercase font-semibold">Origin</span>
+        <p class="mt-1 mb-0">{{ getOriginLabel() }}</p>
       </div>
-      <div class="field">
-        <label class="font-semibold block mb-1">Operation</label>
-        <span class="text-sm">{{ report.operation }}</span>
+      <div class="col-6">
+        <span class="text-xs text-color-secondary uppercase font-semibold">Confidence</span>
+        <p class="mt-1 mb-0">{{ (report.confidence * 100).toFixed(1) }}%</p>
       </div>
-      <div class="field">
-        <label class="font-semibold block mb-1">Origin</label>
-        <span class="text-sm">{{ report.origin }}</span>
-      </div>
-      <div class="field">
-        <label class="font-semibold block mb-1">Confidence</label>
-        <span class="text-sm">{{ report.confidence }}</span>
-      </div>
-      <div class="field">
-        <label class="font-semibold block mb-1">Status</label>
-        <span class="text-sm">{{ report.status }}</span>
-      </div>
-      <div class="field">
-        <label class="font-semibold block mb-1">Evidence</label>
-        <pre class="text-sm p-2 surface-ground border-round">{{ report.evidence }}</pre>
-      </div>
-      <div class="field">
-        <label class="font-semibold block mb-1">Suggestion</label>
-        <pre class="text-sm p-2 surface-ground border-round">{{ report.suggestion || 'N/A' }}</pre>
-      </div>
-      <div class="field">
-        <label class="font-semibold block mb-1">Payload Sent</label>
-        <pre class="text-sm p-2 surface-ground border-round">{{ report.payload_sent }}</pre>
-      </div>
-      <div class="field">
-        <label class="font-semibold block mb-1">Raw Error</label>
-        <pre class="text-sm p-2 surface-ground border-round">{{ report.raw_error }}</pre>
-      </div>
-      <div class="field">
-        <label class="font-semibold block mb-1">Audit Event ID</label>
-        <span class="text-sm">{{ report.audit_event_id || 'N/A' }}</span>
-      </div>
-      <div class="field">
-        <label class="font-semibold block mb-1">Payload Hash</label>
-        <span class="text-sm">{{ report.payload_hash }}</span>
-      </div>
-      <div class="field">
-        <label class="font-semibold block mb-1">Raw Error Hash</label>
-        <span class="text-sm">{{ report.raw_error_hash }}</span>
+      <div class="col-12 mt-1">
+        <span class="text-xs text-color-secondary uppercase font-semibold block mb-2">Status</span>
+        <p-tag
+          [value]="report.status"
+          [severity]="report.status === 'fixed' ? 'success' : report.status === 'dismissed' ? 'secondary' : 'warn'"
+        />
       </div>
     </div>
+
+    <p-divider />
+
+    <!-- 2. EVIDENCE -->
+    <div class="mb-3">
+      <span class="text-xs text-color-secondary uppercase font-semibold block mb-2">Evidence</span>
+      <div style="
+        border-left: 4px solid #f59e0b;
+        background: #fffbeb;
+        padding: 0.75rem 1rem;
+        border-radius: 0 6px 6px 0;
+        font-size: 0.875rem;
+        white-space: pre-wrap;
+        word-break: break-word;
+      ">{{ report.evidence }}</div>
+    </div>
+
+    <!-- 3. SUGGESTION (only when not null) -->
+    @if (report.suggestion) {
+      <div class="mb-3">
+        <span class="text-xs text-color-secondary uppercase font-semibold block mb-2">Suggestion</span>
+        <div style="
+          border-left: 4px solid #22c55e;
+          background: #f0fdf4;
+          padding: 0.75rem 1rem;
+          border-radius: 0 6px 6px 0;
+          font-size: 0.875rem;
+          white-space: pre-wrap;
+          word-break: break-word;
+        ">{{ report.suggestion }}</div>
+      </div>
+    }
+
+    <p-divider />
+
+    <!-- 4. SHOW RAW TOGGLE -->
+    <div class="mb-2">
+      <button
+        class="p-button-text p-0"
+        style="background:none; border:none; cursor:pointer; color:#6366f1; font-size:0.875rem;"
+        (click)="showRaw = !showRaw"
+      >
+        {{ showRaw ? 'Hide raw ▴' : 'Show raw ▾' }}
+      </button>
+    </div>
+
+    @if (showRaw) {
+      <div class="flex flex-column gap-3">
+
+        <div>
+          <span class="text-xs text-color-secondary uppercase font-semibold block mb-2">Payload Sent</span>
+          <pre style="
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-family: monospace;
+            font-size: 0.8rem;
+            padding: 0.75rem;
+            border-radius: 6px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 200px;
+            overflow-y: auto;
+            margin: 0;
+          ">{{ formatJson(report.payload_sent) }}</pre>
+        </div>
+
+        <div>
+          <span class="text-xs text-color-secondary uppercase font-semibold block mb-2">Raw Error</span>
+          <pre style="
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-family: monospace;
+            font-size: 0.8rem;
+            padding: 0.75rem;
+            border-radius: 6px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 200px;
+            overflow-y: auto;
+            margin: 0;
+          ">{{ formatJson(report.raw_error) }}</pre>
+        </div>
+
+        <div class="grid">
+          <div class="col-12">
+            <span class="text-xs text-color-secondary uppercase font-semibold">Audit Event ID</span>
+            <p class="mt-1 mb-0 text-sm">{{ report.audit_event_id || '—' }}</p>
+          </div>
+          <div class="col-6">
+            <span class="text-xs text-color-secondary uppercase font-semibold">Payload Hash</span>
+            <p class="mt-1 mb-0 text-sm" style="word-break:break-all;">{{ report.payload_hash }}</p>
+          </div>
+          <div class="col-6">
+            <span class="text-xs text-color-secondary uppercase font-semibold">Raw Error Hash</span>
+            <p class="mt-1 mb-0 text-sm" style="word-break:break-all;">{{ report.raw_error_hash }}</p>
+          </div>
+        </div>
+
+      </div>
+    }
+
   }
   <ng-template pTemplate="footer">
     <div class="flex justify-content-end gap-2">

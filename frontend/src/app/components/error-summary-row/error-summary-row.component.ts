@@ -3,6 +3,7 @@ import { DatePipe, PercentPipe } from '@angular/common';
 import { Tag } from 'primeng/tag';
 import { Button } from 'primeng/button';
 import { ErrorReport } from '../../core/models/error-report.model';
+import { operationLabel, originLabel } from '../../core/utils/display-labels';
 
 @Component({
   selector: 'app-error-summary-row',
@@ -35,5 +36,13 @@ export class ErrorSummaryRowComponent {
       default:
         return '#f59e0b';
     }
+  }
+
+  getOperationLabel(): string {
+    return operationLabel(this.report.operation);
+  }
+
+  getOriginLabel(): string {
+    return originLabel(this.report.origin);
   }
 }

@@ -1,1 +1,1 @@
-docker compose up -d --build --force-recreate labcore
+docker compose up -d --build --force-recreate frontend

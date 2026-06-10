@@ -1,4 +1,5 @@
 IRIS_HOST=iris
+# Host port for iris Superserver (container port is always 1972)
 IRIS_PORT=1972
 IRIS_NAMESPACE=USER
 IRIS_USERNAME=_SYSTEM
