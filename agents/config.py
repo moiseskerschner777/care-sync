@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     llm_provider: str = ""
     llm_api_key: str = ""
     llm_api_base: str = ""
+    llm_provider_max_tokens: int = 0
     embedding_provider: str = ""
     embedding_api_key: str = ""
     embedding_api_base: str = ""

@@ -26,6 +26,7 @@ class AgentState(TypedDict):
     error: Optional[Dict[str, Any]]
     error_diagnosis: Optional[Dict[str, Any]]
     dedup_hit: bool
+    rate_limited: bool
 
 
 def check_cache(state: AgentState) -> AgentState:
@@ -126,6 +127,9 @@ def doc_reader(state: AgentState) -> AgentState:
 
 
 def send_built(state: AgentState) -> AgentState:
+    if state.get("rate_limited"):
+        return state
+
     built = state.get("built_payload")
     if not built:
         state["error"] = {"http_code": 400, "body": "no built payload available"}

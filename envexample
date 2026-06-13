@@ -14,6 +14,7 @@ IRIS_MCP_URL=http://mcp-database-server-iris:3001
 LLM_PROVIDER=deepseek/deepseek-chat
 LLM_API_KEY=your_api_key_here
 LLM_API_BASE=https://api.deepseek.com
+LLM_PROVIDER_MAX_TOKENS=0
 
 EMBEDDING_PROVIDER=ollama/qwen3-embedding:0.6b
 EMBEDDING_API_BASE=http://host.docker.internal:11434

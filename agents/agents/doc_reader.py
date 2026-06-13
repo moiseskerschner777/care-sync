@@ -10,6 +10,7 @@ from database import SessionLocal
 from memory.knowledge_base_indexer import index_knowledge_base
 from models.knowledge_base import KnowledgeBase
 from tools.knowledge_base import _normalize_target, search_knowledge_base
+from tools.llm_limiter import check_limits, record_usage
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ def run_doc_reader(state: Dict[str, Any]) -> Dict[str, Any]:
         logger.info("→ LLM building payload | model=%s docs=%d chars", settings.llm_provider, docs_size)
 
         prompt = _build_prompt(operation, system_target, payload, chunks)
-        built_payload = _call_llm(prompt)
+        built_payload = _call_llm(prompt, state)
 
         if isinstance(built_payload, dict):
             logger.info("built_payload:\n%s", json.dumps(built_payload, indent=2))
@@ -79,7 +80,10 @@ IMPORTANT RULES:
 - The output must be valid JSON that can be sent directly to the target system."""
 
 
-def _call_llm(prompt: str) -> Dict[str, Any]:
+def _call_llm(prompt: str, state: Dict[str, Any]) -> Dict[str, Any]:
+    if check_limits(state):
+        return {"error": "LLM token limit reached"}
+
     model = settings.llm_provider
     start = time.time()
     try:
@@ -91,12 +95,15 @@ def _call_llm(prompt: str) -> Dict[str, Any]:
         )
         text = response["choices"][0]["message"]["content"]
         elapsed = time.time() - start
-        total_tokens = response.get("usage", {}).get("total_tokens", 0)
+        usage = response.get("usage", {})
+        total_tokens = usage.get("total_tokens", 0)
         logger.info("✓ payload built in %.1fs | tokens=%d", elapsed, total_tokens)
+        record_usage(state, usage, elapsed, success=True)
         return _parse_llm_response(text)
     except Exception as e:
         elapsed = time.time() - start
         logger.error("LLM call failed time_taken=%.2fs error=%s", elapsed, e)
+        record_usage(state, None, elapsed, success=False, error_msg=str(e))
         return {"error": str(e)}
 
 
