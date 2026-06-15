@@ -206,11 +206,19 @@ care-sync/
 At the root of `care-sync/`, create a `.env` file:
 
 ```env
-LLM_PROVIDER=<provider/model>          # reasoning LLM
+# IRIS database connection (used by all services)
+IRIS_HOST=iris
+IRIS_NAMESPACE=USER
+IRIS_USERNAME=_SYSTEM
+IRIS_PASSWORD=SYS
+
+# Reasoning LLM
+LLM_PROVIDER=<provider/model>
 LLM_API_KEY=<your_api_key>
 LLM_API_BASE=
 
-EMBEDDING_PROVIDER=<provider/model>      # embedding model — for doc indexing and vector search
+# Embedding model — for doc indexing and vector search
+EMBEDDING_PROVIDER=<provider/model>
 EMBEDDING_API_KEY=<embedding_api_key>
 EMBEDDING_API_BASE=<embedding_api_base>
 ```
@@ -231,10 +239,15 @@ Wait ~30 seconds for IRIS to fully initialize on first boot.
 curl http://localhost:8000/health   # LabCore
 curl http://localhost:8001/health   # RefLab
 curl http://localhost:8002/health   # VitaCare
-curl http://localhost:8003/health   # Agent
 ```
 
 All should return `200 OK`.
+
+To confirm the agent is up:
+
+```bash
+docker compose ps agents
+```
 
 ### 4. Run the test suite
 
@@ -243,7 +256,7 @@ All should return `200 OK`.
 First request with `ONC001` (non-performable exam). The agent has no cached schema — it indexes the RefLab integration docs, invokes the LLM to build a FHIR R4 Bundle, sends it, and caches the result on success.
 
 ```bash
-curl -s -X POST 164.132.42.219:8000/service-requests \
+curl -s -X POST localhost:8000/service-requests \
   -H "Content-Type: application/json" \
   -d '{
     "patient_id": "11c5be47-3215-4890-a79f-9c2b2293a85e",
@@ -261,7 +274,7 @@ curl -s -X POST 164.132.42.219:8000/service-requests \
 Same operation with different patient/practitioner values and `GEN001`. The agent finds the cached schema from Test 1, replays it directly — no LLM, ~55ms.
 
 ```bash
-curl -s -X POST 164.132.42.219:8000/service-requests \
+curl -s -X POST localhost:8000/service-requests \
   -H "Content-Type: application/json" \
   -d '{
     "patient_id": "e36e8749-a762-45ea-bd6b-63a5745d6e07",
@@ -279,7 +292,7 @@ curl -s -X POST 164.132.42.219:8000/service-requests \
 `ERR-LOINC` is not a valid LOINC code. RefLab rejects with 404 "LOINC code unknown". The Error Checker searches the LabCore source code, integration docs, and IRIS database, then diagnoses the root cause as **ORIGIN_A** (LabCore data/mapping issue).
 
 ```bash
-curl -s -X POST 164.132.42.219:8000/service-requests \
+curl -s -X POST localhost:8000/service-requests \
   -H "Content-Type: application/json" \
   -d '{
     "patient_id": "664d2678-29ce-450e-ab50-bd463364ded6",
@@ -297,7 +310,7 @@ curl -s -X POST 164.132.42.219:8000/service-requests \
 Uses a performable exam (`HEM001`) so only VitaCare is routed. The `covenant_id: "ERR-EXPIRED"` payload triggers VitaCare's `ERR-EXPIRED` simulator — returns 403 "Covenant plan is not active". The Error Checker diagnoses the contract violation.
 
 ```bash
-curl -s -X POST 164.132.42.219:8000/service-requests \
+curl -s -X POST localhost:8000/service-requests \
   -H "Content-Type: application/json" \
   -d '{
     "patient_id": "11c5be47-3215-4890-a79f-9c2b2293a85e",
