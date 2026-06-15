@@ -1,403 +1,639 @@
-# Error Simulation — curl Requests
+# Error Simulation Scenarios — Agent Capture
 
-This document contains 20 HTTP curl requests that simulate realistic error scenarios
-across the three services in this system:
+## How the pipeline works
 
-| Service   | Port | Role                              |
-|-----------|------|-----------------------------------|
-| core-lab  | 8000 | Internal lab management system    |
-| ref-lab   | 8001 | External reference lab (FHIR R4)  |
-| vita-care | 8002 | Health insurance authorization    |
+Every request starts at **core-lab** (`POST /service-requests`).
+After core-lab persists the order, it fires a background thread that calls the **agent**.
+The agent then routes to the external system. When the external system returns an error,
+the agent captures it, deduplicates it, and runs LLM diagnosis.
 
----
-
-## CORE-LAB (port 8000) — Internal Errors
-
----
-
-### 01 — Patient not found (404)
-**Scenario:** The service request references a patient UUID that does not exist in the core-lab
-database. This can happen when a patient was registered in an external system but not yet
-imported into core-lab.
-
-```bash
-curl -s -X GET http://localhost:8000/patients/00000000-0000-0000-0000-000000000000 \
-  -H "Accept: application/json" | jq
+```
+curl → core-lab:8000/service-requests
+            ↓  (background thread via agent_trigger.py)
+       agents:8003/agent/invoke
+            ↓
+       ref-lab:8001/fhir/r4/ServiceRequest   (if any exam has can_perform=False)
+       vita-care:8002/authorizations          (if covenant_id is present)
+            ↓  (on non-2xx response)
+       dedup_check → error_checker (LLM) → write_audit_event
 ```
 
-**Expected:** `404 Not Found` — `"Patient not found"`
+### Routing rules (from `core-lab/services/agent_trigger.py`)
+
+| Condition | Routed to |
+|---|---|
+| Any exam in the order has `can_perform=False` in the catalog | `reflab` |
+| `covenant_id` is set in the request body | `vitacare` |
+
+### Exam codes that route to ref-lab (`can_perform=False` in seed data)
+
+| Code | Name |
+|---|---|
+| `ONC001` | Marcadores Tumorais |
+| `GEN001` | Teste Genético |
+| `CUL001` | Cultura e Antibiograma |
+| `ERR-LOINC` | Teste LOINC desconhecido (error simulator) |
+
+### Seed IDs used in these requests
+
+| Type | ID | Name |
+|---|---|---|
+| Patient | `11c5be47-3215-4890-a79f-9c2b2293a85e` | Ana Paula Silva |
+| Patient | `e36e8749-a762-45ea-bd6b-63a5745d6e07` | Carlos Eduardo Oliveira |
+| Patient | `664d2678-29ce-450e-ab50-bd463364ded6` | Mariana Souza |
+| Practitioner | `0f7f838f-5bbd-43b7-951c-02582e4272a3` | Dra. Helena Martins |
+| Practitioner | `8853e3c3-d0f9-469f-ae48-7813dc83b8ec` | Dr. Ricardo Menezes |
+| Practitioner | `35ca797f-5099-479d-91d5-fbe12a125b90` | Dra. Camila Azevedo |
+
+### How error triggers reach external systems
+
+**Ref-lab identity errors** — The agent injects `patient_id` into the FHIR payload as
+`"subject": { "reference": "Patient/{patient_id}" }`. Ref-lab extracts the bare ID and checks
+it against the identity trigger table in `ref-lab/simulators/identity.py`. Sending a trigger
+string as `patient_id` in the core-lab request is enough to propagate it all the way through.
+
+**Ref-lab exam errors** — The agent injects `exam_code` into the FHIR payload as the LOINC
+coding code. `ERR-LOINC` is already registered in the catalog with `can_perform=False`,
+so it routes to ref-lab and triggers the exam error check.
+
+**VitaCare errors** — The agent passes `covenant_id` directly to vita-care's `/authorizations`
+endpoint. Vita-care's pipeline checks it against the trigger table in
+`vita-care/simulators/covenant.py`. Any value from that table sent as `covenant_id` fires the
+corresponding error.
 
 ---
 
-### 02 — Practitioner not found (404)
-**Scenario:** A doctor's ID was typed incorrectly when creating a service request.
-Core-lab cannot find the practitioner in its registry.
+## Group A — Ref-Lab: Exam Catalog Errors
 
-```bash
-curl -s -X GET http://localhost:8000/practitioners/00000000-dead-beef-0000-000000000000 \
-  -H "Accept: application/json" | jq
-```
+### 01 — Unknown LOINC code in RefLab catalog
 
-**Expected:** `404 Not Found` — `"Practitioner not foundxxx"`
-
----
-
-### 03 — Exam code not in catalog (404)
-**Scenario:** The receptionist typed an exam code that does not exist in the lab catalog.
-The lab cannot accept a service request for an unknown exam.
-
-```bash
-curl -s -X GET http://localhost:8000/exam-catalog/XXXX999 \
-  -H "Accept: application/json" | jq
-```
-
-**Expected:** `404 Not Found` — `"Exam not found"`
-
----
-
-### 04 — Service request not found (404)
-**Scenario:** A frontend tries to fetch a service request using a stale or incorrect ID
-(e.g., an ID copied from a different environment).
-
-```bash
-curl -s -X GET http://localhost:8000/service-requests/nonexistent-id \
-  -H "Accept: application/json" | jq
-```
-
-**Expected:** `404 Not Found`
-
----
-
-### 05 — Service request with non-existent patient (422)
-**Scenario:** A new service request is submitted with a `patient_id` that does not exist
-in the database. The foreign key constraint in core-lab will reject the insertion.
+**Why this error happens:** `ERR-LOINC` is registered in core-lab's exam catalog with
+`can_perform=False`, so it is correctly routed to ref-lab. However, ref-lab does not recognize
+this LOINC code in its own catalog and rejects the order. The agent should classify this as
+**ORIGIN_B** (ref-lab rejected a code that exists in LabCore) or escalate to **ORIGIN_A** if the
+exam code should never have been sent externally.
 
 ```bash
 curl -s -X POST http://localhost:8000/service-requests \
   -H "Content-Type: application/json" \
   -d '{
-    "patient_id": "00000000-0000-0000-0000-000000000000",
+    "patient_id": "11c5be47-3215-4890-a79f-9c2b2293a85e",
     "practitioner_id": "0f7f838f-5bbd-43b7-951c-02582e4272a3",
     "priority": "ROUTINE",
-    "notes": null,
+    "notes": "Exam exists in LabCore catalog but LOINC code is unknown in RefLab",
     "items": [
-      { "exam_code": "HEM001", "exam_name": "Hemograma" }
+      { "exam_code": "ERR-LOINC" }
     ]
-  }' | jq
+  }'
 ```
 
-**Expected:** `422 Unprocessable Entity` — patient FK violation
+**Flow:** core-lab → agent → ref-lab `check_exam` → `ERR-LOINC` match
+**Expected error from ref-lab:** `HTTP 404` — `"LOINC code unknown in RefLab catalog"`
 
 ---
 
-### 06 — Double cancellation of a service request (422)
-**Scenario:** The same service request is cancelled twice. Core-lab must reject the second
-cancellation because the order is already in `CANCELLED` status — re-cancelling it makes
-no sense and could indicate a double-click bug on the frontend.
+## Group B — Ref-Lab: Patient Identity Errors
+
+> All requests below use an error trigger string as `patient_id`. Core-lab does not validate
+> `patient_id` against the database, so it propagates to the agent payload, which injects it
+> into the FHIR resource as `Patient/{patient_id}`. Ref-lab strips the prefix and checks the
+> bare ID against `ref-lab/simulators/identity.py`.
+
+### 02 — Patient name with accent causes normalization mismatch
+
+**Why this error happens:** The patient was registered in core-lab with an accented name
+(e.g., "João"). When ref-lab normalizes the name to ASCII for its internal index, the result
+does not match what was originally indexed. The agent should classify this as **ORIGIN_A**
+(data quality issue at registration — core-lab did not normalize before sending).
 
 ```bash
-curl -s -X PUT http://localhost:8000/service-requests/6f9036b2-7130-47a5-9574-2bf5ce213fc7/cancel \
-  -H "Accept: application/json" | jq
-```
-
-**Expected:** `422 Unprocessable Entity` — already cancelled
-
----
-
-### 07 — Cancel a non-existent service request (404)
-**Scenario:** The cancellation endpoint is called with an ID that never existed.
-This could happen if a webhook fires twice and the second call arrives after the record
-was already deleted.
-
-```bash
-curl -s -X PUT http://localhost:8000/service-requests/nonexistent-id/cancel \
-  -H "Accept: application/json" | jq
-```
-
-**Expected:** `404 Not Found`
-
----
-
-## REF-LAB (port 8001) — FHIR R4 External Lab Errors
-
----
-
-### 08 — Patient CPF mismatch (422)
-**Scenario:** The patient's CPF (Brazilian tax ID) sent in the ServiceRequest does not match
-the document registered in the reference lab. The lab cannot process the exam without
-confirmed patient identity.
-
-```bash
-curl -s -X POST http://localhost:8001/fhir/r4/ServiceRequest \
+curl -s -X POST http://localhost:8000/service-requests \
   -H "Content-Type: application/json" \
   -d '{
-    "resourceType": "ServiceRequest",
-    "subject": { "reference": "Patient/ERR-CPF" },
-    "code": { "coding": [{ "system": "http://loinc.org", "code": "HEM001", "display": "Hemograma" }] }
-  }' | jq
+    "patient_id": "ERR-ACCENT",
+    "practitioner_id": "0f7f838f-5bbd-43b7-951c-02582e4272a3",
+    "priority": "ROUTINE",
+    "notes": "Patient name contains accented characters — RefLab normalization fails",
+    "items": [
+      { "exam_code": "ONC001" }
+    ]
+  }'
 ```
 
-**Expected:** `422 Unprocessable Entity` — FHIR `OperationOutcome` identity error
+**Flow:** core-lab → agent → ref-lab `check_identity` → `ERR-ACCENT` match
+**Expected error from ref-lab:** `HTTP 422` — `"Patient name has accent — normalized version does not match"`
 
 ---
 
-### 09 — Discontinued exam code (410)
-**Scenario:** The doctor requested an exam that was retired from the reference lab's
-catalog. The LOINC code is no longer valid and the lab cannot accept orders for it.
-The `410 Gone` status signals that the resource existed but has been permanently removed.
+### 03 — CPF vs RG document type conflict
+
+**Why this error happens:** The patient was registered with a CPF number but the document
+type field was set to RG (or vice versa). Ref-lab validates both fields together and rejects
+the mismatch. The agent should classify this as **ORIGIN_A** (incorrect data entered at
+registration — LabCore accepted a contradictory document type + number combination).
 
 ```bash
-curl -s -X POST http://localhost:8001/fhir/r4/ServiceRequest \
+curl -s -X POST http://localhost:8000/service-requests \
   -H "Content-Type: application/json" \
   -d '{
-    "resourceType": "ServiceRequest",
-    "subject": { "reference": "Patient/PAC-001" },
-    "code": { "coding": [{ "system": "http://loinc.org", "code": "ERR-DISCONTINUED", "display": "Exam Discontinued" }] }
-  }' | jq
+    "patient_id": "ERR-DOC-TYPE",
+    "practitioner_id": "8853e3c3-d0f9-469f-ae48-7813dc83b8ec",
+    "priority": "URGENT",
+    "notes": "Document type field is RG but the number provided is a CPF",
+    "items": [
+      { "exam_code": "ONC001" }
+    ]
+  }'
 ```
 
-**Expected:** `410 Gone` — FHIR `OperationOutcome` with code `"gone"`
+**Flow:** core-lab → agent → ref-lab `check_identity` → `ERR-DOC-TYPE` match
+**Expected error from ref-lab:** `HTTP 422` — `"CPF vs RG document type conflict"`
 
 ---
 
-### 10 — Wrong tube type used for blood collection (422)
-**Scenario:** The blood sample was collected in the wrong tube (e.g., EDTA tube was used
-instead of a gel-separator tube). The reference lab rejects the specimen before analysis.
+### 04 — Date of birth format mismatch
+
+**Why this error happens:** Core-lab stores birth date as `DD/MM/YYYY` (Brazilian format),
+but the integration contract with ref-lab requires ISO 8601 (`YYYY-MM-DD`). The agent
+sent the date in the wrong format. The agent should classify this as **CONTRACT** (the
+serialization format defined in the integration documentation was not followed).
 
 ```bash
-curl -s -X POST http://localhost:8001/fhir/r4/ServiceRequest \
+curl -s -X POST http://localhost:8000/service-requests \
   -H "Content-Type: application/json" \
   -d '{
-    "resourceType": "ServiceRequest",
-    "subject": { "reference": "Patient/PAC-001" },
-    "code": { "coding": [{ "system": "http://loinc.org", "code": "HEM001", "display": "Hemograma" }] },
-    "specimen": [{ "reference": "Specimen/ERR-TUBE" }]
-  }' | jq
+    "patient_id": "ERR-DOB-FORMAT",
+    "practitioner_id": "35ca797f-5099-479d-91d5-fbe12a125b90",
+    "priority": "ROUTINE",
+    "notes": "Birth date serialized as DD/MM/YYYY instead of ISO 8601 YYYY-MM-DD",
+    "items": [
+      { "exam_code": "GEN001" }
+    ]
+  }'
 ```
 
-**Expected:** `422 Unprocessable Entity` — `"Wrong tube type"`
+**Flow:** core-lab → agent → ref-lab `check_identity` → `ERR-DOB-FORMAT` match
+**Expected error from ref-lab:** `HTTP 422` — `"Date of birth format mismatch"`
 
 ---
 
-### 11 — Hemolyzed sample rejected (422)
-**Scenario:** The blood sample arrived hemolyzed (red blood cells ruptured during transport).
-Hemolysis contaminates the serum and invalidates biochemistry results. The lab rejects
-the specimen and requires a new collection.
+### 05 — Duplicate patient record in RefLab
+
+**Why this error happens:** The patient already exists in ref-lab under a different ID.
+Core-lab issued a new order for them but ref-lab detects a collision on name + CPF + birth date
+and refuses to create a second record. The agent should classify this as **ORIGIN_B** (ref-lab
+constraint that LabCore cannot detect without a prior lookup).
 
 ```bash
-curl -s -X POST http://localhost:8001/fhir/r4/ServiceRequest \
+curl -s -X POST http://localhost:8000/service-requests \
   -H "Content-Type: application/json" \
   -d '{
-    "resourceType": "ServiceRequest",
-    "subject": { "reference": "Patient/PAC-001" },
-    "code": { "coding": [{ "system": "http://loinc.org", "code": "HEM001", "display": "Hemograma" }] },
-    "specimen": [{ "reference": "Specimen/ERR-HEMOLYZED" }]
-  }' | jq
+    "patient_id": "ERR-DUPLICATE",
+    "practitioner_id": "0f7f838f-5bbd-43b7-951c-02582e4272a3",
+    "priority": "ROUTINE",
+    "notes": "Patient already has a record in RefLab under a different internal ID",
+    "items": [
+      { "exam_code": "GEN001" }
+    ]
+  }'
 ```
 
-**Expected:** `422 Unprocessable Entity` — `"Hemolyzed sample"`
+**Flow:** core-lab → agent → ref-lab `check_identity` → `ERR-DUPLICATE` match
+**Expected error from ref-lab:** `HTTP 409` — `"Duplicate patient record in RefLab"`
 
 ---
 
-### 12 — Temperature deviation during transport (422)
-**Scenario:** The sample was transported outside the required temperature range
-(e.g., a frozen sample thawed in transit). Thermal deviation compromises test integrity.
+### 06 — Gender format mismatch (M vs male)
+
+**Why this error happens:** Core-lab stores gender as `"MALE"` / `"FEMALE"` (uppercase FHIR
+enum). The FHIR payload built by the agent used a short code (`"M"` / `"F"`) instead. Ref-lab's
+validator expects the full FHIR string. The agent should classify this as **CONTRACT**
+(the field serialization contract between the two systems was not respected).
 
 ```bash
-curl -s -X POST http://localhost:8001/fhir/r4/ServiceRequest \
+curl -s -X POST http://localhost:8000/service-requests \
   -H "Content-Type: application/json" \
   -d '{
-    "resourceType": "ServiceRequest",
-    "subject": { "reference": "Patient/PAC-001" },
-    "code": { "coding": [{ "system": "http://loinc.org", "code": "GLI001", "display": "Glicemia" }] },
-    "specimen": [{ "reference": "Specimen/ERR-TEMPERATURE" }]
-  }' | jq
+    "patient_id": "ERR-GENDER",
+    "practitioner_id": "8853e3c3-d0f9-469f-ae48-7813dc83b8ec",
+    "priority": "STAT",
+    "notes": "Gender sent as M/F abbreviation — RefLab requires full FHIR value male/female",
+    "items": [
+      { "exam_code": "CUL001" }
+    ]
+  }'
 ```
 
-**Expected:** `422 Unprocessable Entity` — `"Temperature deviation"`
+**Flow:** core-lab → agent → ref-lab `check_identity` → `ERR-GENDER` match
+**Expected error from ref-lab:** `HTTP 422` — `"Gender format mismatch (M vs male)"`
 
 ---
 
-### 13 — Order placed after daily collection cutoff (422)
-**Scenario:** The service request was sent after the reference lab's daily cutoff time
-(e.g., after 18:00). The lab cannot guarantee next-day results and rejects late orders.
+### 07 — Underage patient missing guardian data
+
+**Why this error happens:** The patient is under 18. Ref-lab requires a legal guardian name
+and document to accompany any exam request for minors. Core-lab did not collect or transmit
+this information. The agent should classify this as **ORIGIN_A** (LabCore accepted an order
+for a minor without collecting the mandatory guardian fields).
 
 ```bash
-curl -s -X POST http://localhost:8001/fhir/r4/ServiceRequest \
+curl -s -X POST http://localhost:8000/service-requests \
   -H "Content-Type: application/json" \
   -d '{
-    "resourceType": "ServiceRequest",
-    "id": "ERR-CUTOFF",
-    "subject": { "reference": "Patient/PAC-001" },
-    "code": { "coding": [{ "system": "http://loinc.org", "code": "HEM001", "display": "Hemograma" }] }
-  }' | jq
+    "patient_id": "ERR-MINOR",
+    "practitioner_id": "35ca797f-5099-479d-91d5-fbe12a125b90",
+    "priority": "ROUTINE",
+    "notes": "Minor patient — guardian name and document were not included in the payload",
+    "items": [
+      { "exam_code": "CUL001" }
+    ]
+  }'
 ```
 
-**Expected:** `422 Unprocessable Entity` — `"Order placed after daily cutoff"`
+**Flow:** core-lab → agent → ref-lab `check_identity` → `ERR-MINOR` match
+**Expected error from ref-lab:** `HTTP 422` — `"Underage patient missing guardian data"`
 
 ---
 
-### 14 — Duplicate order detected (409)
-**Scenario:** The same order ID is submitted twice in the same day (e.g., a retry loop
-sent the request twice after a network timeout). The lab detects the duplicate and
-rejects the second submission to prevent double billing and double processing.
-> Send this request twice — first call returns 201, second call returns 409.
+### 08 — CPF check digit validation failure
+
+**Why this error happens:** The CPF stored in core-lab has a typo — the two check digits at
+the end do not pass the Receita Federal validation algorithm. Ref-lab validates CPFs before
+accepting any order. The agent should classify this as **ORIGIN_A** (bad data in LabCore —
+CPF should have been validated at the point of patient registration).
 
 ```bash
-curl -s -X POST http://localhost:8001/fhir/r4/ServiceRequest \
+curl -s -X POST http://localhost:8000/service-requests \
   -H "Content-Type: application/json" \
   -d '{
-    "resourceType": "ServiceRequest",
-    "id": "ERR-DUPLICATE-ORDER",
-    "subject": { "reference": "Patient/PAC-001" },
-    "code": { "coding": [{ "system": "http://loinc.org", "code": "HEM001", "display": "Hemograma" }] }
-  }' | jq
+    "patient_id": "ERR-CPF",
+    "practitioner_id": "0f7f838f-5bbd-43b7-951c-02582e4272a3",
+    "priority": "URGENT",
+    "notes": "CPF fails Receita Federal check digit algorithm — likely a data entry error",
+    "items": [
+      { "exam_code": "ONC001" }
+    ]
+  }'
 ```
 
-**Expected (2nd call):** `409 Conflict` — `"Duplicate order same day"`
+**Flow:** core-lab → agent → ref-lab `check_identity` → `ERR-CPF` match
+**Expected error from ref-lab:** `HTTP 422` — `"CPF check digit validation failure"`
 
 ---
 
-### 15 — Cancel race condition — sample already in analyzer (409)
-**Scenario:** Core-lab sends a cancellation request at the exact moment the reference lab
-starts processing the sample on the analyzer. The lab cannot stop mid-analysis and
-returns a conflict.
+### 09 — Special characters corrupted in transit
+
+**Why this error happens:** The patient name contains characters like `ç`, `ã`, `é`. The HTTP
+layer transmitted the payload without enforcing UTF-8, causing the characters to be corrupted
+by the time ref-lab parsed the JSON body. The agent should classify this as **INFRA** or
+**CONTRACT** (encoding agreement between systems was never established or not enforced).
 
 ```bash
-curl -s -X POST http://localhost:8001/fhir/r4/ServiceRequest \
+curl -s -X POST http://localhost:8000/service-requests \
   -H "Content-Type: application/json" \
   -d '{
-    "resourceType": "ServiceRequest",
-    "id": "ERR-CANCEL-RACE",
-    "subject": { "reference": "Patient/PAC-001" },
-    "code": { "coding": [{ "system": "http://loinc.org", "code": "HEM001", "display": "Hemograma" }] }
-  }' | jq
+    "patient_id": "ERR-ENCODING",
+    "practitioner_id": "35ca797f-5099-479d-91d5-fbe12a125b90",
+    "priority": "ROUTINE",
+    "notes": "Patient name has accented chars — Content-Type charset was not UTF-8 at transmission",
+    "items": [
+      { "exam_code": "GEN001" }
+    ]
+  }'
 ```
 
-**Expected:** `409 Conflict` — `"Cancel during processing"`
+**Flow:** core-lab → agent → ref-lab `check_identity` → `ERR-ENCODING` match
+**Expected error from ref-lab:** `HTTP 422` — `"Special characters corrupted in transit"`
 
 ---
 
-### 16 — Partial batch acceptance (207)
-**Scenario:** A batch of 3 exams is sent to the reference lab. The lab accepts 2 items
-but rejects the 3rd because the exam code is not in its catalog. The `207 Multi-Status`
-response reports per-item outcomes so core-lab can handle each item individually.
+## Group C — VitaCare: Authorization Errors
+
+> All requests below set `covenant_id` to a trigger string and use a valid internal exam
+> (`HEM001`, `can_perform=True`) so only vitacare is triggered — reflab is not involved.
+> VitaCare's `simulate()` checks the `covenant_id` directly against its trigger table.
+
+### 10 — Covenant health plan is expired
+
+**Why this error happens:** The patient's health plan was active when first registered in
+core-lab but has since lapsed. VitaCare rejects any authorization for an inactive plan.
+The agent should classify this as **CONTRACT** (the plan contract between patient and covenant
+is no longer valid — LabCore should verify plan status before routing to VitaCare).
 
 ```bash
-curl -s -X POST http://localhost:8001/fhir/r4/ServiceRequest \
+curl -s -X POST http://localhost:8000/service-requests \
   -H "Content-Type: application/json" \
   -d '{
-    "resourceType": "ServiceRequest",
-    "subject": { "reference": "Patient/PAC-001" },
-    "code": { "coding": [{ "system": "http://loinc.org", "code": "HEM001", "display": "Hemograma" }] },
-    "extension": [{ "url": "batch_id", "valueString": "ERR-PARTIAL" }]
-  }' | jq
+    "patient_id": "11c5be47-3215-4890-a79f-9c2b2293a85e",
+    "practitioner_id": "0f7f838f-5bbd-43b7-951c-02582e4272a3",
+    "priority": "ROUTINE",
+    "covenant_id": "ERR-EXPIRED",
+    "notes": "Patient plan expired — VitaCare will reject any authorization attempt",
+    "items": [
+      { "exam_code": "HEM001" }
+    ]
+  }'
 ```
 
-**Expected:** `207 Multi-Status` — 2 accepted, 1 rejected with reason `"exam not available in RefLab catalog"`
+**Flow:** core-lab → agent `validate_coverage` → vita-care `simulate_covenant` → `ERR-EXPIRED` match
+**Expected error from vita-care:** `HTTP 403` — `"Covenant plan is not active"`
 
 ---
 
-### 17 — Cancel after result already signed (422)
-**Scenario:** The doctor tries to cancel a service request after the reference lab has
-already issued and digitally signed the DiagnosticReport. A signed result cannot be
-retroactively cancelled.
+### 11 — Exam not covered by the patient's plan tier
+
+**Why this error happens:** The exam exists in the catalog but the patient's specific plan
+tier does not cover it. The patient would need an upgraded plan or an out-of-pocket
+authorization. The agent should classify this as **CONTRACT** (coverage exclusion defined
+by the covenant — LabCore should check coverage before ordering).
 
 ```bash
-curl -s -X DELETE http://localhost:8001/fhir/r4/ServiceRequest/ERR-RESULT-ISSUED \
-  -H "Accept: application/json" | jq
-```
-
-**Expected:** `422 Unprocessable Entity` — `"DiagnosticReport already signed"`
-
----
-
-### 18 — Cancel while sample is being processed (409)
-**Scenario:** A cancellation request arrives while the sample is actively running on the
-analyzer. The lab system cannot interrupt the hardware mid-run and rejects the
-cancellation with a conflict.
-
-```bash
-curl -s -X DELETE http://localhost:8001/fhir/r4/ServiceRequest/ERR-PROCESSING \
-  -H "Accept: application/json" | jq
-```
-
-**Expected:** `409 Conflict` — `"Sample already in analyzer"`
-
----
-
-## VITA-CARE (port 8002) — Health Insurance Authorization Errors
-
----
-
-### 19 — Patient not enrolled in health plan (404)
-**Scenario:** Core-lab tries to request pre-authorization from VitaCare for a patient
-who is not registered as a beneficiary in that health plan. The patient may have switched
-plans or their registration is pending in VitaCare's system.
-
-```bash
-curl -s -X POST http://localhost:8002/authorizations \
+curl -s -X POST http://localhost:8000/service-requests \
   -H "Content-Type: application/json" \
   -d '{
+    "patient_id": "e36e8749-a762-45ea-bd6b-63a5745d6e07",
+    "practitioner_id": "8853e3c3-d0f9-469f-ae48-7813dc83b8ec",
+    "priority": "ROUTINE",
+    "covenant_id": "ERR-NOT-COVERED",
+    "notes": "Exam is valid but excluded from coverage in this plan tier",
+    "items": [
+      { "exam_code": "HEM001" }
+    ]
+  }'
+```
+
+**Flow:** core-lab → agent `validate_coverage` → vita-care `simulate_covenant` → `ERR-NOT-COVERED` match
+**Expected error from vita-care:** `HTTP 422` — `"Exam not covered by this plan"`
+
+---
+
+### 12 — Patient not enrolled in VitaCare
+
+**Why this error happens:** Core-lab has a covenant_id on record for this patient, but
+VitaCare has no enrollment record for them under that plan. This can happen when the plan
+was cancelled before enrollment completed, or if the covenant_id was entered incorrectly
+at registration. The agent should classify this as **ORIGIN_A** (stale or incorrect
+covenant_id stored in LabCore).
+
+```bash
+curl -s -X POST http://localhost:8000/service-requests \
+  -H "Content-Type: application/json" \
+  -d '{
+    "patient_id": "664d2678-29ce-450e-ab50-bd463364ded6",
+    "practitioner_id": "35ca797f-5099-479d-91d5-fbe12a125b90",
+    "priority": "URGENT",
     "covenant_id": "ERR-PATIENT-NOT-ENROLLED",
-    "patient_id": "PAC-001",
-    "exam_code": "HEM001",
-    "exam_name": "Hemograma Completo",
-    "practitioner_id": "DR-001",
-    "cid_code": "Z00.0",
-    "justification": "Rotina anual"
-  }' | jq
+    "notes": "Covenant ID is set in LabCore but patient has no enrollment record in VitaCare",
+    "items": [
+      { "exam_code": "HEM001" }
+    ]
+  }'
 ```
 
-**Expected:** `404 Not Found` — `"Patient not found in VitaCare"`
+**Flow:** core-lab → agent `validate_coverage` → vita-care `simulate_covenant` → `ERR-PATIENT-NOT-ENROLLED` match
+**Expected error from vita-care:** `HTTP 404` — `"Patient not found in VitaCare"`
 
 ---
 
-### 20 — CID code does not justify the requested exam (422)
-**Scenario:** The health plan's rules engine evaluates the CID-10 (diagnosis code) against
-the requested exam. The submitted CID code does not clinically justify this exam — for
-example, requesting a Marcadores Tumorais panel under a routine check-up CID when the
-plan requires an oncology-related CID for that exam.
+### 13 — Daily authorization request limit reached
+
+**Why this error happens:** VitaCare imposes a per-clinic daily cap on authorization requests.
+The clinic has already exhausted today's quota. Nothing is wrong with the data — the request
+would succeed tomorrow. The agent should classify this as **ORIGIN_B** (external throttle —
+no LabCore bug, retry should be scheduled for the next business window).
 
 ```bash
-curl -s -X POST http://localhost:8002/authorizations \
+curl -s -X POST http://localhost:8000/service-requests \
   -H "Content-Type: application/json" \
   -d '{
-    "covenant_id": "ERR-CID",
-    "patient_id": "PAC-001",
-    "exam_code": "ONC001",
-    "exam_name": "Marcadores Tumorais",
-    "practitioner_id": "DR-001",
-    "cid_code": "Z00.0",
-    "justification": "Rotina anual"
-  }' | jq
+    "patient_id": "11c5be47-3215-4890-a79f-9c2b2293a85e",
+    "practitioner_id": "0f7f838f-5bbd-43b7-951c-02582e4272a3",
+    "priority": "ROUTINE",
+    "covenant_id": "ERR-AUTH-LIMIT",
+    "notes": "Daily authorization quota exhausted — VitaCare is rate-limiting this clinic",
+    "items": [
+      { "exam_code": "GLI001" }
+    ]
+  }'
 ```
 
-**Expected:** `422 Unprocessable Entity` — `"CID code does not justify this exam"`
+**Flow:** core-lab → agent `validate_coverage` → vita-care `simulate_covenant` → `ERR-AUTH-LIMIT` match
+**Expected error from vita-care:** `HTTP 429` — `"Daily authorization limit reached"`
 
 ---
 
-## Summary Table
+### 14 — Specialist referral required before authorization
 
-| # | Service   | Method | Endpoint                                              | Trigger               | Expected Status |
-|---|-----------|--------|-------------------------------------------------------|-----------------------|-----------------|
-| 01 | core-lab | GET    | /patients/{id}                                       | Unknown UUID          | 404             |
-| 02 | core-lab | GET    | /practitioners/{id}                                  | Unknown UUID          | 404             |
-| 03 | core-lab | GET    | /exam-catalog/{code}                                 | Unknown exam code     | 404             |
-| 04 | core-lab | GET    | /service-requests/{id}                               | Unknown ID            | 404             |
-| 05 | core-lab | POST   | /service-requests                                    | Non-existent patient  | 422             |
-| 06 | core-lab | PUT    | /service-requests/{id}/cancel                        | Already cancelled     | 422             |
-| 07 | core-lab | PUT    | /service-requests/nonexistent-id/cancel              | Unknown ID            | 404             |
-| 08 | ref-lab  | POST   | /fhir/r4/ServiceRequest                              | ERR-CPF               | 422             |
-| 09 | ref-lab  | POST   | /fhir/r4/ServiceRequest                              | ERR-DISCONTINUED      | 410             |
-| 10 | ref-lab  | POST   | /fhir/r4/ServiceRequest                              | ERR-TUBE              | 422             |
-| 11 | ref-lab  | POST   | /fhir/r4/ServiceRequest                              | ERR-HEMOLYZED         | 422             |
-| 12 | ref-lab  | POST   | /fhir/r4/ServiceRequest                              | ERR-TEMPERATURE       | 422             |
-| 13 | ref-lab  | POST   | /fhir/r4/ServiceRequest                              | ERR-CUTOFF            | 422             |
-| 14 | ref-lab  | POST   | /fhir/r4/ServiceRequest                              | ERR-DUPLICATE-ORDER   | 409 (2nd call)  |
-| 15 | ref-lab  | POST   | /fhir/r4/ServiceRequest                              | ERR-CANCEL-RACE       | 409             |
-| 16 | ref-lab  | POST   | /fhir/r4/ServiceRequest                              | ERR-PARTIAL           | 207             |
-| 17 | ref-lab  | DELETE | /fhir/r4/ServiceRequest/ERR-RESULT-ISSUED            | Signed result         | 422             |
-| 18 | ref-lab  | DELETE | /fhir/r4/ServiceRequest/ERR-PROCESSING               | Sample in analyzer    | 409             |
-| 19 | vita-care | POST  | /authorizations                                      | ERR-PATIENT-NOT-ENROLLED | 404          |
-| 20 | vita-care | POST  | /authorizations                                      | ERR-CID               | 422             |
+**Why this error happens:** The covenant plan requires certain exams to be requested only
+after a formal specialist referral. The order came from a general practitioner without a
+referral document. The agent should classify this as **CONTRACT** (a business rule defined
+by the covenant that LabCore must enforce before routing the order to VitaCare).
+
+```bash
+curl -s -X POST http://localhost:8000/service-requests \
+  -H "Content-Type: application/json" \
+  -d '{
+    "patient_id": "e36e8749-a762-45ea-bd6b-63a5745d6e07",
+    "practitioner_id": "8853e3c3-d0f9-469f-ae48-7813dc83b8ec",
+    "priority": "ROUTINE",
+    "covenant_id": "ERR-REFERRAL",
+    "notes": "GP ordered directly — plan requires a specialist referral document to be attached",
+    "items": [
+      { "exam_code": "COL001" }
+    ]
+  }'
+```
+
+**Flow:** core-lab → agent `validate_coverage` → vita-care `simulate_covenant` → `ERR-REFERRAL` match
+**Expected error from vita-care:** `HTTP 422` — `"Referral from specialist required"`
+
+---
+
+### 15 — Clinical justification text missing
+
+**Why this error happens:** The covenant plan mandates a free-text clinical justification for
+high-complexity exams. The field was omitted or left blank in the LabCore order. The agent
+should classify this as **ORIGIN_A** (LabCore did not collect the justification field that
+the integration contract requires for this exam category).
+
+```bash
+curl -s -X POST http://localhost:8000/service-requests \
+  -H "Content-Type: application/json" \
+  -d '{
+    "patient_id": "664d2678-29ce-450e-ab50-bd463364ded6",
+    "practitioner_id": "35ca797f-5099-479d-91d5-fbe12a125b90",
+    "priority": "URGENT",
+    "covenant_id": "ERR-JUSTIFICATION",
+    "notes": "Clinical justification field is empty — required for this exam category by the covenant",
+    "items": [
+      { "exam_code": "TSH001" }
+    ]
+  }'
+```
+
+**Flow:** core-lab → agent `validate_coverage` → vita-care `simulate_covenant` → `ERR-JUSTIFICATION` match
+**Expected error from vita-care:** `HTTP 422` — `"Clinical justification text missing"`
+
+---
+
+### 16 — CID code does not justify the requested exam
+
+**Why this error happens:** The ICD-10 / CID code on the order (e.g., Z00.0 routine check-up)
+does not clinically justify the exam. VitaCare applies a CID-to-exam validation matrix to
+prevent non-indicated procedures. The agent should classify this as **CONTRACT** (the clinical
+indication rules defined by the covenant were not satisfied).
+
+```bash
+curl -s -X POST http://localhost:8000/service-requests \
+  -H "Content-Type: application/json" \
+  -d '{
+    "patient_id": "11c5be47-3215-4890-a79f-9c2b2293a85e",
+    "practitioner_id": "0f7f838f-5bbd-43b7-951c-02582e4272a3",
+    "priority": "ROUTINE",
+    "covenant_id": "ERR-CID",
+    "notes": "CID Z00.0 (routine check-up) does not justify this exam per covenant clinical rules",
+    "items": [
+      { "exam_code": "URI001" }
+    ]
+  }'
+```
+
+**Flow:** core-lab → agent `validate_coverage` → vita-care `simulate_covenant` → `ERR-CID` match
+**Expected error from vita-care:** `HTTP 422` — `"CID code does not justify this exam"`
+
+---
+
+### 17 — Requesting physician not credentialed with this covenant
+
+**Why this error happens:** The doctor who signed the order is not in VitaCare's credentialed
+provider list for this specific plan. The patient may have a valid plan but the physician is
+not an authorized requester under it. The agent should classify this as **ORIGIN_A** (LabCore
+allowed an order from a practitioner who is not credentialed for this covenant).
+
+```bash
+curl -s -X POST http://localhost:8000/service-requests \
+  -H "Content-Type: application/json" \
+  -d '{
+    "patient_id": "e36e8749-a762-45ea-bd6b-63a5745d6e07",
+    "practitioner_id": "8853e3c3-d0f9-469f-ae48-7813dc83b8ec",
+    "priority": "STAT",
+    "covenant_id": "ERR-DOCTOR",
+    "notes": "Dr. Ricardo Menezes is not in VitaCare credentialed provider list for this plan",
+    "items": [
+      { "exam_code": "HEM001" }
+    ]
+  }'
+```
+
+**Flow:** core-lab → agent `validate_coverage` → vita-care `simulate_covenant` → `ERR-DOCTOR` match
+**Expected error from vita-care:** `HTTP 403` — `"Requesting physician not credentialed with this covenant"`
+
+---
+
+### 18 — Monthly exam limit reached for this patient
+
+**Why this error happens:** The patient's plan has a monthly cap on the number of this exam
+type. The patient already hit the limit and this would exceed it. VitaCare denies the
+authorization. The agent should classify this as **ORIGIN_B** (plan-level restriction
+LabCore cannot predict without querying VitaCare's usage history first).
+
+```bash
+curl -s -X POST http://localhost:8000/service-requests \
+  -H "Content-Type: application/json" \
+  -d '{
+    "patient_id": "664d2678-29ce-450e-ab50-bd463364ded6",
+    "practitioner_id": "35ca797f-5099-479d-91d5-fbe12a125b90",
+    "priority": "ROUTINE",
+    "covenant_id": "ERR-EXAM-LIMIT",
+    "notes": "Patient already reached the monthly frequency limit for this exam under the plan",
+    "items": [
+      { "exam_code": "HEM001" }
+    ]
+  }'
+```
+
+**Flow:** core-lab → agent `validate_coverage` → vita-care `simulate_covenant` → `ERR-EXAM-LIMIT` match
+**Expected error from vita-care:** `HTTP 429` — `"Monthly exam limit reached for this patient"`
+
+---
+
+### 19 — Doctor CRM not found in credentialed list
+
+**Why this error happens:** The CRM registration number stored for the requesting physician
+in LabCore does not exist in VitaCare's credentialing database. This is different from
+scenario 17 — here the physician identity itself is entirely unknown to VitaCare, rather
+than being known but uncredentialed for a specific plan. The agent should classify this as
+**ORIGIN_A** (the CRM stored in LabCore may have a typo or wrong state).
+
+```bash
+curl -s -X POST http://localhost:8000/service-requests \
+  -H "Content-Type: application/json" \
+  -d '{
+    "patient_id": "11c5be47-3215-4890-a79f-9c2b2293a85e",
+    "practitioner_id": "0f7f838f-5bbd-43b7-951c-02582e4272a3",
+    "priority": "URGENT",
+    "covenant_id": "ERR-CRM",
+    "notes": "CRM-SC-12345 not found in VitaCare registry — possibly wrong state suffix or digit",
+    "items": [
+      { "exam_code": "GLI001" }
+    ]
+  }'
+```
+
+**Flow:** core-lab → agent `validate_coverage` → vita-care `simulate_covenant` → `ERR-CRM` match
+**Expected error from vita-care:** `HTTP 403` — `"Doctor CRM not found in credentialed list"`
+
+---
+
+### 20 — TISS standard version mismatch
+
+**Why this error happens:** TISS (Troca de Informações em Saúde Suplementar) is the ANS
+standard for health plan data exchange in Brazil. The payload was built using TISS 3.05 but
+VitaCare's endpoint now requires TISS 3.06. The version header in the message does not match
+what VitaCare expects. The agent should classify this as **CONTRACT** (the integration protocol
+version in LabCore was not updated after VitaCare migrated to the new TISS version).
+
+```bash
+curl -s -X POST http://localhost:8000/service-requests \
+  -H "Content-Type: application/json" \
+  -d '{
+    "patient_id": "e36e8749-a762-45ea-bd6b-63a5745d6e07",
+    "practitioner_id": "35ca797f-5099-479d-91d5-fbe12a125b90",
+    "priority": "ROUTINE",
+    "covenant_id": "ERR-TISS",
+    "notes": "Agent payload uses TISS 3.05 — VitaCare endpoint now requires TISS 3.06",
+    "items": [
+      { "exam_code": "COL001" }
+    ]
+  }'
+```
+
+**Flow:** core-lab → agent `validate_coverage` → vita-care `simulate_covenant` → `ERR-TISS` match
+**Expected error from vita-care:** `HTTP 422` — `"TISS standard version mismatch"`
+
+---
+
+## Summary table
+
+| # | Target | Trigger field | Trigger value | HTTP | Error message | Expected agent origin |
+|---|---|---|---|---|---|---|
+| 01 | ref-lab | `exam_code` | `ERR-LOINC` | 404 | LOINC code unknown in RefLab catalog | ORIGIN_B / ORIGIN_A |
+| 02 | ref-lab | `patient_id` | `ERR-ACCENT` | 422 | Patient name accent mismatch | ORIGIN_A |
+| 03 | ref-lab | `patient_id` | `ERR-DOC-TYPE` | 422 | CPF vs RG document type conflict | ORIGIN_A |
+| 04 | ref-lab | `patient_id` | `ERR-DOB-FORMAT` | 422 | Date of birth format mismatch | CONTRACT |
+| 05 | ref-lab | `patient_id` | `ERR-DUPLICATE` | 409 | Duplicate patient record in RefLab | ORIGIN_B |
+| 06 | ref-lab | `patient_id` | `ERR-GENDER` | 422 | Gender format mismatch (M vs male) | CONTRACT |
+| 07 | ref-lab | `patient_id` | `ERR-MINOR` | 422 | Underage patient missing guardian data | ORIGIN_A |
+| 08 | ref-lab | `patient_id` | `ERR-CPF` | 422 | CPF check digit validation failure | ORIGIN_A |
+| 09 | ref-lab | `patient_id` | `ERR-ENCODING` | 422 | Special characters corrupted in transit | INFRA / CONTRACT |
+| 10 | vita-care | `covenant_id` | `ERR-EXPIRED` | 403 | Covenant plan is not active | CONTRACT |
+| 11 | vita-care | `covenant_id` | `ERR-NOT-COVERED` | 422 | Exam not covered by this plan | CONTRACT |
+| 12 | vita-care | `covenant_id` | `ERR-PATIENT-NOT-ENROLLED` | 404 | Patient not found in VitaCare | ORIGIN_A |
+| 13 | vita-care | `covenant_id` | `ERR-AUTH-LIMIT` | 429 | Daily authorization limit reached | ORIGIN_B |
+| 14 | vita-care | `covenant_id` | `ERR-REFERRAL` | 422 | Referral from specialist required | CONTRACT |
+| 15 | vita-care | `covenant_id` | `ERR-JUSTIFICATION` | 422 | Clinical justification text missing | ORIGIN_A |
+| 16 | vita-care | `covenant_id` | `ERR-CID` | 422 | CID code does not justify this exam | CONTRACT |
+| 17 | vita-care | `covenant_id` | `ERR-DOCTOR` | 403 | Physician not credentialed with covenant | ORIGIN_A |
+| 18 | vita-care | `covenant_id` | `ERR-EXAM-LIMIT` | 429 | Monthly exam limit reached | ORIGIN_B |
+| 19 | vita-care | `covenant_id` | `ERR-CRM` | 403 | Doctor CRM not found in credentialed list | ORIGIN_A |
+| 20 | vita-care | `covenant_id` | `ERR-TISS` | 422 | TISS standard version mismatch | CONTRACT |
