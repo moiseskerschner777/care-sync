@@ -213,15 +213,29 @@ IRIS_USERNAME=_SYSTEM
 IRIS_PASSWORD=SYS
 
 # Reasoning LLM
-LLM_PROVIDER=<provider/model>
+LLM_PROVIDER=<provider/model>          # e.g. openai/gpt-4o, anthropic/claude-sonnet-4-5
 LLM_API_KEY=<your_api_key>
-LLM_API_BASE=
+LLM_API_BASE=                          # leave empty for official APIs
 
 # Embedding model — for doc indexing and vector search
-EMBEDDING_PROVIDER=<provider/model>
-EMBEDDING_API_KEY=<embedding_api_key>
-EMBEDDING_API_BASE=<embedding_api_base>
+# Format: <provider>/<model>  — used by both the agent and python-code-rag
+EMBEDDING_PROVIDER=<provider/model>    # e.g. openai/text-embedding-3-small or ollama/snowflake-arctic-embed2
+EMBEDDING_API_KEY=<embedding_api_key>  # required for openai; leave empty for ollama
+EMBEDDING_API_BASE=                    # leave empty for official APIs
+
+# Embedding vector dimension — MUST match the model above exactly
+# Wrong value causes silent vector search failures
+EMBED_DIM=<dimension>                  # openai/text-embedding-3-small → 1536
+                                       # openai/text-embedding-ada-002 → 1536
+                                       # openai/text-embedding-3-large → 3072
+                                       # ollama/snowflake-arctic-embed2 → 1024
+                                       # ollama/nomic-embed-text        → 768
 ```
+
+> **Ollama note:** if running Ollama locally, `OLLAMA_URL` defaults to
+> `http://host.docker.internal:11434` and works on Linux, Mac, and Windows
+> because both services declare `extra_hosts: host.docker.internal:host-gateway`
+> in `docker-compose.yml`. Only set `OLLAMA_URL` if Ollama runs on a different host.
 
 ### 2. Start all services
 
