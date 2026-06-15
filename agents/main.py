@@ -39,6 +39,7 @@ def _sanitized_settings() -> dict:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.debug("app startup — settings: %s", _sanitized_settings())
+    logger.info("LLM_PROVIDER_MAX_TOKENS=%s", settings.llm_provider_max_tokens)
 
     Base.metadata.create_all(bind=engine)
     logger.debug("tables created")
